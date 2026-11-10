@@ -1,67 +1,178 @@
-# Template de démonstration
+# YunoHost
 
-Ceci est la documentation utilisateur de l'intégration. Gladys ré-héberge ce
-fichier et affiche un lien **Documentation** permanent vers lui dans l'écran
-de configuration (dans la langue de l'utilisateur, avec l'anglais en repli) —
-c'est au moment de configurer que l'utilisateur en a le plus besoin. Gardez
-les courtes indications d'accueil dans les blocs `section` du `config_schema`
-du manifest ; mettez ici le pas-à-pas détaillé (captures d'écran, dépannage…).
+Un serveur **YunoHost** (version 11.1 ou plus récente) dans Gladys, par l’API
+de son administration web. Pratique pour savoir d’un coup d’œil, ou dans une
+scène, que des mises à jour attendent, qu’un service s’est arrêté, que le
+diagnostic a trouvé un problème ou que la dernière sauvegarde vieillit :
 
-## Ce que vous obtenez
+- le serveur devient un appareil Gladys (onglet Découverte) : **version de
+  YunoHost** (YunoHost version), **paquets système à mettre à jour**,
+  **applications à mettre à jour**, **mise à jour majeure de YunoHost
+  disponible** (oui / non), **migrations en attente**, **âge des listes de
+  paquets** (heures depuis que YunoHost a récupéré les listes de paquets),
+  **services arrêtés**, **erreurs** et **avertissements du diagnostic**,
+  **sauvegardes locales** et **âge de la plus récente** (heures), **dernière
+  action** (Last action, le résultat du dernier bouton pressé) ; et pour chaque
+  service que YunoHost liste : **en marche** (oui / non) ;
+- des boutons pour **mettre à jour le système**, **mettre à jour les
+  applications**, **sauvegarder le serveur** et **redémarrer** un service,
+  chacun refusé tant que vous ne l’autorisez pas.
 
-Six appareils de démonstration apparaissent après l'installation : une
-station météo (vraies données Open-Meteo), un interrupteur, une lampe
-variable, une prise connectée avec mesure de puissance, un détecteur de
-mouvement et une caméra.
+Les noms des fonctions sont en anglais dans Gladys (comme les autres
+intégrations) ; ce document les donne en français.
 
-## Configuration
+Gladys lit seulement ce que YunoHost garde : il ne rafraîchit jamais les
+listes de mises à jour (YunoHost récupère le catalogue d’applications chaque
+jour ; les listes de paquets système sont récupérées par YunoHost ou par
+Debian, voir « âge des listes de paquets »), et il ne lance jamais le
+diagnostic (YunoHost le lance deux fois par jour). Un service compte comme
+**arrêté** quand il est activé au démarrage et arrêté ou en échec ; un service
+désactivé exprès ne l’est pas ; un service dont YunoHost ne connaît pas l’état
+(un service à exécution unique) est inconnu, pas arrêté. Le diagnostic compte
+ce que vous n’avez pas ignoré dans l’administration web.
 
-1. Ouvrez l'onglet **Configuration** de l'intégration.
-2. Renseignez la **latitude** et la **longitude** que la station météo de
-   démonstration doit observer (Paris par défaut), et choisissez votre unité
-   de température. L'**intervalle de rafraîchissement** règle la fréquence
-   de lecture de la station météo et de la puissance de la prise : toutes
-   les 5 minutes par défaut, toutes les minutes au plus.
-3. Enregistrez : les appareils apparaissent dans l'onglet **Découverte**,
-   prêts à être ajoutés.
+> **Cette intégration n’a jamais été testée avec un vrai serveur YunoHost.**
+> Cette première version suit les routes de l’API d’administration de YunoHost
+> (son « actionsmap », telle que la documentation développeur la décrit) et n’a
+> été testée qu’avec un faux serveur. Dites sur le forum de Gladys ce qui
+> marche et ce qui ne marche pas, avec votre version de YunoHost.
 
-Le réglage **Préférer la connexion locale** pilote la prise de
-démonstration : elle affiche en badge le canal réellement utilisé (local ou
-cloud), avec un point orange quand elle fonctionne en mode dégradé (local
-refusé, bascule cloud).
+Intégration non officielle, sans lien avec le projet YunoHost. YunoHost est un
+logiciel libre sous AGPL : cette intégration appelle seulement son API, elle
+ne contient rien de son code.
 
-## Actions
+## Avant de commencer
 
-- **Tester le fournisseur météo** — effectue une requête en direct vers
-  Open-Meteo et affiche la température et l'humidité actuelles sous le
-  bouton.
-- **Identifier un appareil** — choisissez un de vos appareils dans la liste
-  et il se signale (la lampe de démonstration « clignote » dans les logs).
+1. Gladys a besoin d’un **administrateur** YunoHost (un membre du groupe
+   `admins`, comme le premier utilisateur créé à l’installation). Son mot de
+   passe est gardé par Gladys dans sa base, jamais réaffiché, et envoyé
+   seulement au serveur.
+2. Si la **liste d’autorisation** de l’administration web est active
+   (paramètres de YunoHost, sécurité), ajoutez-y l’adresse de Gladys, sinon le
+   serveur répond HTTP 403.
+3. Ajoutez une intégration par serveur.
 
-## Scènes
+## Réglages
 
-L'intégration ajoute ses propres cartes à l'éditeur de scènes (Gladys 5.1
-ou plus récent), dans la catégorie **Intégrations** :
+- **Adresse du serveur** : son adresse IP locale ou son domaine, telle que vous
+  la saisissez pour ouvrir l’administration web. HTTPS seulement (port 443,
+  ou `:port`) ; une adresse copiée depuis le navigateur
+  (`https://.../yunohost/admin/`) est acceptée.
+- **Administrateur**, **Mot de passe**.
+- **Empreinte du certificat** (facultatif) : voir plus bas.
+- **Rafraîchissement** : 5, 15 (par défaut), 30 ou 60 minutes. Le bouton de
+  test, l’enregistrement du formulaire et un redémarrage de Gladys ou du
+  conteneur ne lisent pas plus tôt (l’heure de la dernière tentative est
+  gardée, écrite avant la lecture). La fin d’une mise à jour ou d’une
+  sauvegarde avance une lecture (15 s après).
+- **Autoriser les mises à jour depuis Gladys**, **Autoriser les sauvegardes
+  depuis Gladys** : désactivés par défaut.
+- **Services que Gladys peut redémarrer** : vide par défaut (aucun
+  redémarrage). Les noms des services, tels que la page Services de
+  l’administration web les liste, séparés par des virgules, 16 au plus ;
+  chacun reçoit un bouton **Restart**.
 
-- **Mouvement détecté** (déclencheur) — lance la scène quand un détecteur
-  de démonstration voit bouger quelque chose. Choisissez éventuellement le
-  détecteur et ce qui a bougé (personne, animal) ; laissés vides, toute
-  détection correspond. Les actions suivantes peuvent lire ce qui a bougé
-  avec `{{triggerEvent.data.target}}`.
-- **Identifier un appareil** (action) — fait se signaler l'appareil choisi.
-  Elle indique si l'appareil a pu se signaler, pour que les actions
-  suivantes puissent en dépendre.
+## Le certificat HTTPS
 
-## Tableau de bord
+Gladys vérifie le certificat du serveur par son empreinte SHA-256, juste après
+la négociation TLS et **avant** d’envoyer le mot de passe (un serveur joint par
+son adresse locale présente un certificat qui n’est pas établi pour cette
+adresse : aucune autorité ne peut s’en porter garante ici) :
 
-Ajoutez le widget **État de la démo** à un tableau de bord : il affiche en
-direct la température de la station météo et la puissance de la prise du
-bureau, la connexion utilisée par la prise (en orange si dégradée) et la
-position observée. Son bouton **Identifier la lampe** fait se signaler la
-lampe de démonstration.
+- champ vide, à la première connexion : Gladys écrit le certificat rencontré
+  dans son stockage, **puis** envoie le mot de passe. Si son stockage est
+  illisible ou non inscriptible, rien n’est appris et rien n’est envoyé (l’état
+  donne l’empreinte rencontrée ; le stockage est relu toutes les 10 s) ;
+- ensuite, un autre certificat arrête tout (rien n’est envoyé) et l’état donne
+  son empreinte. Enregistrer à nouveau le formulaire ne change rien. Vérifiez
+  l’empreinte (votre navigateur la montre : cadenas, certificat, SHA-256),
+  puis appuyez deux fois en 2 minutes sur **Faire confiance au certificat
+  rencontré** (le premier appui montre l’empreinte, le second l’approuve), ou
+  saisissez-la dans **Empreinte du certificat** ;
+- **Let’s Encrypt** renouvelle le certificat tous les deux ou trois mois, avec
+  une nouvelle clé : comptez cette vérification à chaque fois. Une empreinte
+  saisie dans le formulaire est la seule approuvée tant que vous ne la changez
+  pas.
 
-## Dépannage
+## Les actions
 
-L'intégration journalise tout ce qu'elle fait : consultez les logs de
-l'intégration depuis l'interface Gladys (ou `docker logs` sur l'hôte) avec
-`LOG_LEVEL=debug` pour le détail complet.
+Chaque action est un bouton, jamais un interrupteur : un « tout éteindre »
+d’un assistant vocal ou d’une scène ne l’atteint jamais. Gladys ne met à jour,
+ne sauvegarde ni ne redémarre jamais rien de lui-même.
+
+- **Mettre à jour le système** et **Mettre à jour les applications** lancent ce
+  que lancent les boutons de mise à jour de l’administration web. Une mise à
+  jour de YunoHost lui-même redémarre son API : les lectures peuvent échouer
+  une minute pendant ce temps.
+- **Sauvegarder le serveur** fait une sauvegarde locale complète (toutes les
+  applications et le système), comme l’administration web par défaut :
+  attention à la place libre sur le disque.
+- **Redémarrer** (un bouton par service listé) redémarre ce service. Son
+  résultat est relu 5 s après : « fait, le service tourne », ou « fait, mais le
+  service ne tourne pas », ou « tourne, redémarrage pas encore vu » quand
+  YunoHost donne encore l’heure de son démarrage précédent. Redémarrer nginx ou
+  yunohost-api depuis Gladys coupe sa propre réponse.
+
+Une mise à jour ou une sauvegarde tourne dans YunoHost, jusqu’à une heure :
+l’appui reçoit sa réponse dès que la requête est partie (et que YunoHost ne
+l’a pas refusée en quelques secondes) ; le résultat s’affiche dans **Dernière
+action** (« terminée », « refusée par YunoHost », « échouée ou refusée »,
+« envoyée, sans réponse finale : elle tourne peut-être encore » ; textes en
+anglais). Un redémarrage reçoit la réponse de YunoHost : sans réponse dans les
+5 s que Gladys accorde à une commande, l’appui dit « envoyé, sans réponse pour
+l’instant », jamais un succès.
+
+Un appui est refusé, rien n’est envoyé, dans ces cas :
+
+- l’option de l’action est désactivée, ou le service n’est pas listé (vérifié
+  à nouveau juste avant l’écriture de la requête) ;
+- la configuration est incomplète, la connexion ou le certificat a été refusé,
+  une connexion serait nécessaire pendant l’attente qui suit un refus, ou Gladys est en pause à la demande du
+  serveur (HTTP 429 ou 5xx) ;
+- la même action a été envoyée il y a peu : 30 minutes pour une mise à jour,
+  1 heure pour une sauvegarde, 2 minutes pour le redémarrage d’un service
+  (gardé à travers les redémarrages), ou ce délai ne peut pas être écrit dans
+  le stockage de l’intégration (/data), ou ce stockage est illisible ;
+- une action tourne déjà, ou une lecture en cours ne finit pas dans les 2,5 s
+  qui suivent l’appui ;
+- le serveur ne répond pas à la lecture faite juste avant dans les 2,5 s (pour
+  un redémarrage : YunoHost ne connaît pas le service) ;
+- la requête n’a pas pu être écrite dans les 3,5 s qui suivent l’appui.
+
+## Pannes
+
+- **Identifiants refusés** (par la route de connexion de YunoHost seulement,
+  HTTP 401) : plus rien n’est envoyé tant que le nom d’utilisateur ou le mot de
+  passe n’est pas enregistré à nouveau dans le formulaire (le mot de passe
+  enregistré est alors essayé une fois, même identique) ; le bouton **Tester la
+  connexion** essaie une fois de plus, quand une lecture est due. Après un
+  refus, **aucune connexion** pendant 5 minutes, puis 10, 20... (6 heures au
+  plus) pour chaque refus d’affilée, gardé à travers les redémarrages :
+  fail2ban sur le serveur bannit une adresse après quelques connexions
+  refusées. Gladys garde un marqueur de 8 bits du mot de passe refusé (partagé
+  par 1 mot de passe sur 256, jamais le mot de passe) pour qu’un redémarrage
+  ne le réessaie pas.
+- **HTTP 403** (la liste d’autorisation de l’administration web) : dit comme
+  tel, réessayé, jamais un refus du mot de passe.
+- **HTTP 429 ou 5xx** sur la connexion ou sur la route des versions : une pause
+  de toutes les requêtes (au moins l’intervalle de rafraîchissement, jusqu’à 6 heures, ou ce que le serveur demande),
+  gardée à travers les redémarrages. Les autres routes (mises à jour,
+  services, diagnostic, sauvegardes) ne mettent jamais en pause ni n’arrêtent
+  la lecture (sauf un certificat ou une connexion refusés, qui arrêtent tout
+  où qu’ils se présentent) : ce qu’elles n’ont pas donné cette fois est dit
+  dans l’état, et une route en échec est redemandée 1, 2, 4... lectures plus
+  tard, 6 heures au plus d’écart.
+- **Pas de réponse** : nouvel essai après l’intervalle de rafraîchissement,
+  puis deux fois plus long à chaque fois, jusqu’à une heure. Après une
+  connexion refusée, l’état ajoute que fail2ban bannit peut-être Gladys.
+
+Ni le mot de passe ni le cookie de session ne sont journalisés ni publiés ;
+les domaines, noms d’applications et messages du serveur non plus. Le stockage
+garde l’empreinte du certificat, le marqueur de 8 bits ci-dessus, l’attente de
+connexion, la pause et l’heure du dernier appui de chaque action.
+
+## Pas fait (pour l’instant)
+
+Rafraîchir les listes de mises à jour, lancer le diagnostic, la place libre
+sur le disque, la liste des applications et leurs versions, les domaines et
+leurs certificats : dites-le sur le forum si vous en avez besoin.

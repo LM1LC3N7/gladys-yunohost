@@ -1,0 +1,182 @@
+[
+  {
+    "name": "setValue: option checked first removed",
+    "file": "src/app.js",
+    "from": "    this.allowed(kind, f.restart);\n    if (this.action)",
+    "to": "    if (this.action)"
+  },
+  {
+    "name": "checkAction: option check removed",
+    "file": "src/app.js",
+    "from": "  checkAction(session, mono, kind, service) {\n    this.allowed(kind, service);",
+    "to": "  checkAction(session, mono, kind, service) {"
+  },
+  {
+    "name": "beforeSend: option check removed",
+    "file": "src/app.js",
+    "from": "        const at = this.monotonic();\n        this.allowed(kind, service);",
+    "to": "        const at = this.monotonic();"
+  },
+  {
+    "name": "beforeSend: deadline check removed",
+    "file": "src/app.js",
+    "from": "        if (at > sendBy) throw userError(T.errors.tooSlow);\n        written = true;",
+    "to": "        written = true;"
+  },
+  {
+    "name": "checkAction: delay between presses ignored",
+    "file": "src/app.js",
+    "from": "      if (ago < span) throw",
+    "to": "      if (false) throw"
+  },
+  {
+    "name": "delay not kept in /data: sent anyway",
+    "file": "src/app.js",
+    "from": "    if (!saved) {",
+    "to": "    if (false) {"
+  },
+  {
+    "name": "checkAction: final failure ignored",
+    "file": "src/app.js",
+    "from": "    if (this.final) throw userError(T.errors.notConnected);",
+    "to": "    "
+  },
+  {
+    "name": "checkAction: /data unreadable ignored",
+    "file": "src/app.js",
+    "from": "    if (this.dataUnreadable) throw userError(T.errors.dataUnreadable);",
+    "to": "    "
+  },
+  {
+    "name": "checkAction: pause ignored",
+    "file": "src/app.js",
+    "from": "    if (pause > 0) throw userError(T.errors.paused(pause));",
+    "to": "    "
+  },
+  {
+    "name": "restart: unknown service sent anyway",
+    "file": "src/app.js",
+    "from": "        if (!before) throw userError(T.errors.unknownService(service));",
+    "to": ""
+  },
+  {
+    "name": "restart without an answer taken as a success",
+    "file": "src/app.js",
+    "from": "    if (kind === 'restart') {\n      throw userError(T.errors.sentUnconfirmed",
+    "to": "    if (false) {\n      throw userError(T.errors.sentUnconfirmed"
+  },
+  {
+    "name": "unsent at the deadline: not cut",
+    "file": "src/app.js",
+    "from": "      controller.abort();\n      await action.done;",
+    "to": "      await action.done;"
+  },
+  {
+    "name": "YunoHost said no: delay kept",
+    "file": "src/app.js",
+    "from": "        // YunoHost answered \"no\": nothing runs.\n        await undo();",
+    "to": "        // YunoHost answered \"no\": nothing runs."
+  },
+  {
+    "name": "not sent: delay kept",
+    "file": "src/app.js",
+    "from": "      if (err.notSent) {\n        await undo();",
+    "to": "      if (err.notSent) {"
+  },
+  {
+    "name": "a 500 of an action pauses the readings",
+    "file": "src/app.js",
+    "from": "      if (isFinal(err)) this.follow(err);",
+    "to": "      this.follow(err);"
+  },
+  {
+    "name": "checkPeer: another certificate accepted",
+    "file": "src/app.js",
+    "from": "      if (fingerprint === pin) return;",
+    "to": "      return;"
+  },
+  {
+    "name": "checkPeer: /data unreadable learns a pin",
+    "file": "src/app.js",
+    "from": "    if (this.dataUnreadable) {\n      throw new YnhError(CODES.PIN_UNAVAILABLE",
+    "to": "    if (false) {\n      throw new YnhError(CODES.PIN_UNAVAILABLE"
+  },
+  {
+    "name": "checkPeer: pin not written, password sent anyway",
+    "file": "src/app.js",
+    "from": "    m.pins[key] = fingerprint;\n    if (!(await this.save())) {",
+    "to": "    m.pins[key] = fingerprint;\n    if (false) {"
+  },
+  {
+    "name": "trust: a late second click trusts",
+    "file": "src/app.js",
+    "from": "      mono - pending.at > INTERVALS.TRUST_CONFIRM_MS ||",
+    "to": "      false ||"
+  },
+  {
+    "name": "login gate: not doubled",
+    "file": "src/app.js",
+    "from": "INTERVALS.LOGIN_GATE_MIN_MS * 2 ** (count - 1),",
+    "to": "INTERVALS.LOGIN_GATE_MIN_MS,"
+  },
+  {
+    "name": "login gate: not lifted by a success",
+    "file": "src/app.js",
+    "from": "for (const field of ['pause', 'refused', 'loginGate']) {",
+    "to": "for (const field of ['pause', 'refused']) {"
+  },
+  {
+    "name": "refused login retried by the loop",
+    "file": "src/app.js",
+    "from": "    if (this.final && !(evenRefused && this.final.code === CODES.CREDENTIALS)) return;",
+    "to": "    if (this.final && this.final.code !== CODES.CREDENTIALS) return;"
+  },
+  {
+    "name": "client: no gate before the connection",
+    "file": "src/ynh/client.js",
+    "from": "    this.loginGate();\n    const body",
+    "to": "    const body"
+  },
+  {
+    "name": "client: no gate before the first byte",
+    "file": "src/ynh/client.js",
+    "from": "      beforeSend: () => this.loginGate(),\n",
+    "to": ""
+  },
+  {
+    "name": "client: a 403 of the login is a refusal",
+    "file": "src/ynh/client.js",
+    "from": "    this.onLogin(res.status);\n    if (res.status === 401) {",
+    "to": "    this.onLogin(res.status);\n    if (res.status === 401 || res.status === 403) {"
+  },
+  {
+    "name": "client: a 401 of a secondary route logs in again",
+    "file": "src/ynh/client.js",
+    "from": "      if (res.status === 401 && secondary) {",
+    "to": "      if (false) {"
+  },
+  {
+    "name": "client: a final failure on a secondary route swallowed",
+    "file": "src/ynh/client.js",
+    "from": "        if (isFinal(err) || err?.code === CODES.LOGIN_GATE) throw err;",
+    "to": "        if (err?.code === CODES.LOGIN_GATE) throw err;"
+  },
+  {
+    "name": "parse: a disabled service counted down",
+    "file": "src/ynh/parse.js",
+    "from": "if (s.enabled === true && s.running === 0)",
+    "to": "if (s.running === 0)"
+  },
+  {
+    "name": "parse: a diagnosis never run taken as 0",
+    "file": "src/ynh/parse.js",
+    "from": "if (json === null) return { errors: null, warnings: null };",
+    "to": "if (json === null) return { errors: 0, warnings: 0 };"
+  },
+  {
+    "name": "config: http:// accepted",
+    "file": "src/config.js",
+    "from": "    if (url.protocol === 'http:') return { error: 'http' };\n",
+    "to": ""
+  }
+]

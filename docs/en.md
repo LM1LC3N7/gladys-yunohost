@@ -1,61 +1,161 @@
-# Demo Devices Template
+# YunoHost
 
-This is the user documentation of the integration. Gladys re-hosts this file
-and shows a permanent **Documentation** link to it in the Configuration screen
-(in the user's language, with English as the fallback) — it is when
-configuring that the user needs it most. Keep the short onboarding hints in
-the `section` blocks of the manifest `config_schema`; put the long
-step-by-step (screenshots, troubleshooting…) here.
+A **YunoHost** server (version 11.1 or later) in Gladys, through the API of
+its web administration. Handy to know at a glance, or in a scene, that
+upgrades are waiting, that a service stopped, that the diagnosis found a
+problem, or that the last backup is getting old:
 
-## What you get
+- the server becomes a Gladys device (Discovery tab): **YunoHost version**,
+  **system packages to upgrade**, **apps to upgrade**, **major YunoHost
+  upgrade available** (yes / no), **pending migrations**, **package lists
+  age** (hours since YunoHost last fetched the lists of packages), **services
+  down**, **diagnosis errors** and **diagnosis warnings**, **local backups**
+  and **newest backup age** (hours), **last action** (the outcome of the last
+  button pressed); and for each service YunoHost lists: **running** (yes /
+  no);
+- buttons to **upgrade the system**, **upgrade the apps**, **back up the
+  server** and **restart** a service, each one refused until you allow it.
 
-Six demo devices show up after installation: a weather station (real data
-from Open-Meteo), a switch, a dimmable light, a smart plug with power
-metering, a motion sensor and a camera.
+Gladys only reads what YunoHost keeps: it never refreshes the update lists
+(YunoHost fetches the app catalog every day; the system package lists are
+fetched by YunoHost or by Debian, see "Package lists age"), and it never runs
+the diagnosis (YunoHost runs it twice a day). A service counts as **down**
+when it is enabled at boot and stopped or failed; a service disabled on
+purpose is not down; a service whose state YunoHost does not know (a
+one-shot service) is unknown, not down. The diagnosis counts what you did not
+ignore in the web admin.
 
-## Configuration
+> **This integration has never been tested with a real YunoHost server.**
+> This first version follows the routes of the YunoHost administration API
+> (its "actionsmap", as the developer documentation describes it) and was
+> tested against a fake server only. Tell on the Gladys forum what works and
+> what does not, with your YunoHost version.
 
-1. Open the **Configuration** tab of the integration.
-2. Set the **latitude** and **longitude** the demo weather station should
-   observe (they default to Paris), and pick your temperature unit.
-   The **refresh interval** sets how often the weather station and the
-   plug's power are read: every 5 minutes by default, every minute at most.
-3. Save: the devices appear in the **Discovery** tab, ready to be added.
+Unofficial integration, not affiliated with the YunoHost project. YunoHost is
+free software under the AGPL: this integration only calls its API, it holds
+none of its code.
 
-The **Prefer the local connection** toggle drives the demo plug: it reports
-the channel it actually uses as a badge (local or cloud), with an orange dot
-when it runs degraded (local refused, cloud fallback).
+## Before you start
 
-## Actions
+1. Gladys needs a YunoHost **administrator** (a member of the `admins` group,
+   such as the first user created at the installation). Its password is kept
+   by Gladys in its database, never shown again, and sent only to the
+   server.
+2. If the **allowlist** of the web admin is on (YunoHost settings, security),
+   add the address of Gladys to it, or the server answers HTTP 403.
+3. Add one integration per server.
 
-- **Test the weather provider** — performs a live request to Open-Meteo and
-  shows the current temperature and humidity under the button.
-- **Identify a device** — pick one of your devices in the list and it will
-  signal itself (the demo light "blinks" in the logs).
+## Settings
 
-## Scenes
+- **Address of the server**: its local IP address or its domain, as you type
+  it to open the web admin. HTTPS only (port 443, or `:port`); an address
+  copied from the browser (`https://.../yunohost/admin/`) is accepted.
+- **Administrator**, **Password**.
+- **Certificate fingerprint** (optional): see below.
+- **Refresh**: 5, 15 (default), 30 or 60 minutes. The test button, a save of
+  the form and a restart of Gladys or of the container do not read sooner
+  (the time of the last attempt is kept, written before the reading). The end
+  of an upgrade or of a backup brings one reading forward (15 s after it).
+- **Allow upgrades from Gladys**, **Allow backups from Gladys**: off by
+  default.
+- **Services Gladys may restart**: empty by default (no restart). The names
+  of the services, as the Services page of the web admin lists them,
+  separated by commas, 16 at most; each gets a **Restart** button.
 
-The integration adds its own cards to the scene editor (Gladys 5.1 or
-later), under the **Integrations** category:
+## The HTTPS certificate
 
-- **Motion detected** (trigger) — starts the scene when a demo motion sensor
-  sees something move. Optionally pick the sensor and what moved (person,
-  animal); left empty, any detection matches. The following actions can
-  read what moved with `{{triggerEvent.data.target}}`.
-- **Identify a device** (action) — makes the chosen device signal itself.
-  It returns whether the device could signal itself, so the following
-  actions can depend on it.
+Gladys checks the certificate of the server by its SHA-256 fingerprint, right
+after the TLS handshake and **before** sending the password (a server reached
+by its local address shows a certificate that is not made out to that
+address, so no authority can vouch for it here):
 
-## Dashboard
+- the field empty, at the first connection: Gladys writes the certificate
+  met to its storage, **then** sends the password. If its storage cannot be
+  read or written, nothing is learned and nothing is sent (the status shows
+  the fingerprint met; the storage is read again every 10 s);
+- afterwards, another certificate stops everything (nothing is sent) and the
+  status shows its fingerprint. Saving the form again changes nothing. Check
+  the fingerprint (your browser shows it: padlock, certificate, SHA-256),
+  then press **Trust the certificate met** twice within 2 minutes (the first
+  press shows the fingerprint, the second trusts it), or type it in
+  **Certificate fingerprint**;
+- **Let's Encrypt** renews the certificate every two or three months, with a
+  new key: expect this check each time. A fingerprint typed in the form is
+  the only one trusted until you change it.
 
-Add the **Demo status** widget to a dashboard: it shows the live
-temperature of the weather station and the power of the office plug, the
-connection the plug currently uses (orange when degraded) and the observed
-location. Its **Identify the light** button makes the demo light signal
-itself.
+## The actions
 
-## Troubleshooting
+Each action is a button, never a switch: a "turn everything off" of a voice
+assistant or a scene never reaches it. Gladys never upgrades, backs up nor
+restarts anything by itself.
 
-The integration logs everything it does: check the integration logs from the
-Gladys UI (or `docker logs` on the host) with `LOG_LEVEL=debug` for the full
-detail.
+- **Upgrade the system** and **Upgrade the apps** run what the Upgrade
+  buttons of the web admin run. An upgrade of YunoHost itself restarts its
+  API: the readings may fail for a minute meanwhile.
+- **Back up the server** makes a full local backup (every app and the
+  system), as the web admin does by default: mind the free disk space.
+- **Restart** (one button per service listed) restarts that service. Its
+  outcome is read again 5 s later: "done, the service is running", or "done,
+  but the service is not running", or "running, the restart is not seen yet"
+  when YunoHost still gives the time of its previous start. Restarting
+  nginx or yunohost-api from Gladys cuts its own answer.
+
+An upgrade or a backup runs inside YunoHost, for up to an hour: the press is
+answered as soon as the request left (and YunoHost did not refuse it within a
+few seconds); the outcome shows in **Last action** ("finished", "refused by
+YunoHost", "failed or refused", "sent, no final answer: it may still be
+running"). A restart is answered by YunoHost: without an answer within the 5 s
+Gladys gives a command, the press says "sent, without an answer yet", never a
+success.
+
+A press is refused, nothing sent, in these cases:
+
+- the option of the action is off, or the service is not listed (checked
+  again right before the request is written);
+- the configuration is incomplete, the login or the certificate was refused,
+  a login would be needed while the wait after a refusal runs, or Gladys is in a pause asked by the
+  server (HTTP 429 or 5xx);
+- the same action was sent a short while ago: 30 minutes for an upgrade, 1
+  hour for a backup, 2 minutes for the restart of a service (kept across
+  restarts), or this delay cannot be written to the storage of the
+  integration (/data), or that storage cannot be read;
+- an action is already running, or a reading in progress does not end within
+  2.5 s of the press;
+- the server does not answer the read made just before within 2.5 s (for a
+  restart: YunoHost does not know the service);
+- the request could not be written within 3.5 s of the press.
+
+## Failures
+
+- **Credentials refused** (by the login route of YunoHost only, HTTP 401):
+  nothing is sent again until the user name or the password is saved again in
+  the form (the password saved is then tried once, even the same one); the
+  **Test the connection** button tries once more, when a reading is due.
+  After a refusal, **no login at all** for 5 minutes, then 10, 20... (6 hours
+  at most) for each refusal in a row, kept across restarts: fail2ban on the
+  server bans an address after a few refused logins. Gladys keeps an 8-bit
+  marker of the refused password (shared by 1 password in 256, never the
+  password) so that a restart does not try it again.
+- **HTTP 403** (the allowlist of the web admin): said as such, tried again,
+  never a refusal of the password.
+- **HTTP 429 or 5xx** on the login or on the versions route: a pause of every
+  request (the refresh interval at least, up to 6 hours, or what the server asks), kept across restarts. The
+  other routes (updates, services, diagnosis, backups) never pause nor stop
+  the reading (a refused certificate or login aside, which stops everything
+  wherever it is met): what they did not give this time is said in the
+  status, and a route failing is asked again 1, 2, 4... readings later, at
+  most 6 hours apart.
+- **No answer**: tried again after the refresh interval, then twice as long
+  each time, up to an hour. After a refused login, the status adds that
+  fail2ban may be banning Gladys.
+
+Neither the password nor the session cookie is logged or published; the
+domains, app names and messages of the server are not either. The storage
+keeps the certificate fingerprint, the 8-bit marker above, the login wait,
+the pause and the time of the last press of each action.
+
+## Not done (yet)
+
+Refreshing the update lists, running the diagnosis, the free disk space, the
+list of apps and their versions, the domains and their certificates:
+say on the forum if you need one.

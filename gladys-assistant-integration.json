@@ -1,177 +1,173 @@
 {
   "manifest_version": 1,
   "type": "device",
-  "name": "Demo Devices Template",
+  "name": "YunoHost",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "YunoHost server: upgrades waiting, services, diagnosis, backups; actions off by default.",
+    "fr": "Serveur YunoHost : mises à jour, services, diagnostic, sauvegardes ; actions inactives."
   },
-  "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
+  "version": "0.1.0",
+  "docker_image": "ghcr.io/lm1lc3n7/gladys-yunohost:0.1.0",
   "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
-  "transports": ["local", "cloud"],
+  "cover_image": "https://raw.githubusercontent.com/LM1LC3N7/gladys-yunohost/main/cover.png",
+  "categories": ["servers"],
+  "transports": ["local"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": { "en": "How it works", "fr": "Fonctionnement" },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "Gladys reads one YunoHost server (version 11.1 or later) through the API of its web administration, with an administrator account, in HTTPS. The server becomes a device: YunoHost version, system packages and apps to upgrade, major upgrade available, pending migrations, age of the package lists, services down and, for each service, whether it runs, diagnosis errors and warnings, local backups and the age of the newest, and the last action sent from Gladys. Gladys never refreshes the update lists nor runs the diagnosis: it reads what YunoHost keeps (YunoHost runs its diagnosis twice a day). Buttons can upgrade the system or the apps, back up the server, or restart a service: each one is refused unless you allow it below. Add one integration per server. Unofficial integration, not affiliated with the YunoHost project.",
+        "fr": "Gladys lit un serveur YunoHost (version 11.1 ou plus récente) par l’API de son administration web, avec un compte administrateur, en HTTPS. Le serveur devient un appareil : version de YunoHost, paquets système et applications à mettre à jour, mise à jour majeure disponible, migrations en attente, âge des listes de paquets, services arrêtés et, pour chaque service, s’il tourne, erreurs et avertissements du diagnostic, sauvegardes locales et âge de la plus récente, et la dernière action envoyée depuis Gladys. Gladys ne rafraîchit jamais les listes de mises à jour et ne lance pas le diagnostic : il lit ce que YunoHost garde (YunoHost lance son diagnostic deux fois par jour). Des boutons peuvent mettre à jour le système ou les applications, sauvegarder le serveur, ou redémarrer un service : chacun est refusé tant que vous ne l’autorisez pas plus bas. Ajoutez une intégration par serveur. Intégration non officielle, sans lien avec le projet YunoHost."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://github.com/LM1LC3N7/gladys-yunohost",
+          "label": { "en": "Source code", "fr": "Code source" }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
+      "key": "host",
+      "type": "string",
+      "label": { "en": "Address of the server", "fr": "Adresse du serveur" },
       "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+        "en": "The local IP address (or the domain) of the YunoHost server, as you type it to open its web admin (https://<address>/yunohost/admin). HTTPS only; an optional port after a colon (443 by default).",
+        "fr": "L’adresse IP locale (ou le domaine) du serveur YunoHost, telle que vous la saisissez pour ouvrir son administration web (https://<adresse>/yunohost/admin). HTTPS seulement ; un port facultatif après deux-points (443 par défaut)."
       },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
-      "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
+      "placeholder": { "en": "e.g. 192.168.1.20", "fr": "ex. 192.168.1.20" },
+      "required": true
     },
     {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
+      "key": "username",
+      "type": "string",
+      "label": { "en": "Administrator", "fr": "Administrateur" },
       "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
+        "en": "The user name of a YunoHost administrator (a member of the admins group, such as the first user created at the installation).",
+        "fr": "Le nom d’utilisateur d’un administrateur YunoHost (un membre du groupe admins, comme le premier utilisateur créé à l’installation)."
       },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
+      "placeholder": { "en": "e.g. camille", "fr": "ex. camille" },
+      "required": true
     },
     {
-      "key": "unit",
+      "key": "password",
+      "type": "secret",
+      "label": { "en": "Password", "fr": "Mot de passe" },
+      "description": {
+        "en": "The password of this administrator. Kept by Gladys in its database, never shown again, sent only to the YunoHost server (on a connection whose certificate was checked first). After a refusal, Gladys waits 5 minutes or more before any other login, so that fail2ban does not ban it.",
+        "fr": "Le mot de passe de cet administrateur. Gardé par Gladys dans sa base, jamais réaffiché, envoyé seulement au serveur YunoHost (sur une connexion dont le certificat a été vérifié avant). Après un refus, Gladys attend 5 minutes ou plus avant toute autre connexion, pour que fail2ban ne le bannisse pas."
+      },
+      "required": true
+    },
+    {
+      "key": "certificate_fingerprint",
+      "type": "string",
+      "label": {
+        "en": "Certificate fingerprint (optional)",
+        "fr": "Empreinte du certificat (facultatif)"
+      },
+      "description": {
+        "en": "Empty: Gladys pins the HTTPS certificate met at the first connection (written to its storage before the password is sent) and then refuses any other one, saying its fingerprint; the \"Trust the certificate met\" button (two clicks) then accepts it. Let's Encrypt renews the certificate every two or three months: expect one such click each time. To pin a certificate yourself, type its SHA-256 fingerprint here (as your browser shows it).",
+        "fr": "Vide : Gladys épingle le certificat HTTPS rencontré à la première connexion (écrit dans son stockage avant l’envoi du mot de passe) puis refuse tout autre, en donnant son empreinte ; le bouton « Faire confiance au certificat rencontré » (deux clics) l’accepte alors. Let’s Encrypt renouvelle le certificat tous les deux ou trois mois : comptez un tel clic à chaque fois. Pour épingler un certificat vous-même, saisissez ici son empreinte SHA-256 (telle que votre navigateur l’affiche)."
+      },
+      "placeholder": { "en": "e.g. AB:CD:...", "fr": "ex. AB:CD:..." },
+      "required": false
+    },
+    {
+      "key": "poll_interval",
       "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
-      "required": false,
-      "default": "celsius",
+      "label": { "en": "Refresh", "fr": "Rafraîchissement" },
+      "description": {
+        "en": "How often the server is read. The test button, a save of the form or a restart do not read sooner; the end of an action brings one reading forward.",
+        "fr": "Fréquence de lecture du serveur. Le bouton de test, l’enregistrement du formulaire ou un redémarrage ne lisent pas plus tôt ; la fin d’une action avance une lecture."
+      },
+      "required": true,
+      "default": "15",
       "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
+        { "value": "5", "label": { "en": "5 minutes", "fr": "5 minutes" } },
+        { "value": "15", "label": { "en": "15 minutes", "fr": "15 minutes" } },
+        { "value": "30", "label": { "en": "30 minutes", "fr": "30 minutes" } },
+        { "value": "60", "label": { "en": "1 hour", "fr": "1 heure" } }
       ]
     },
     {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
+      "key": "actions_section",
+      "type": "section",
+      "label": { "en": "Actions", "fr": "Actions" },
       "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
+        "en": "Reading only by default. Each action is a button (never a switch: a \"turn everything off\" never reaches it), refused unless allowed here, with a delay before the same action can be sent again (30 min for an upgrade, 1 h for a backup, 2 min for a restart). An upgrade or a backup runs inside YunoHost for up to an hour: the button answers once the request left, the outcome shows in \"Last action\". Gladys never upgrades, backs up nor restarts anything by itself.",
+        "fr": "Lecture seule par défaut. Chaque action est un bouton (jamais un interrupteur : un « tout éteindre » ne l’atteint jamais), refusé tant qu’il n’est pas autorisé ici, avec un délai avant de pouvoir renvoyer la même action (30 min pour une mise à jour, 1 h pour une sauvegarde, 2 min pour un redémarrage). Une mise à jour ou une sauvegarde tourne dans YunoHost jusqu’à une heure : le bouton répond dès que la requête est partie, le résultat s’affiche dans « Dernière action » (Last action). Gladys ne met à jour, ne sauvegarde ni ne redémarre jamais rien de lui-même."
+      }
+    },
+    {
+      "key": "allow_upgrades",
+      "type": "boolean",
+      "label": {
+        "en": "Allow upgrades from Gladys",
+        "fr": "Autoriser les mises à jour depuis Gladys"
+      },
+      "description": {
+        "en": "Off: the \"Upgrade the system\" and \"Upgrade the apps\" buttons are refused and nothing is sent. On: they run what the Upgrade buttons of the web admin run.",
+        "fr": "Désactivé : les boutons « Upgrade the system » et « Upgrade the apps » sont refusés et rien n’est envoyé. Activé : ils lancent ce que lancent les boutons de mise à jour de l’administration web."
       },
       "required": false,
-      "default": 300,
-      "min": 60,
-      "max": 3600
+      "default": false
+    },
+    {
+      "key": "allow_backup",
+      "type": "boolean",
+      "label": {
+        "en": "Allow backups from Gladys",
+        "fr": "Autoriser les sauvegardes depuis Gladys"
+      },
+      "description": {
+        "en": "Off: the \"Back up the server\" button is refused and nothing is sent. On: it makes a full local backup (every app and the system), as the web admin does by default; mind the free disk space.",
+        "fr": "Désactivé : le bouton « Back up the server » est refusé et rien n’est envoyé. Activé : il fait une sauvegarde locale complète (toutes les applications et le système), comme l’administration web par défaut ; attention à la place libre sur le disque."
+      },
+      "required": false,
+      "default": false
+    },
+    {
+      "key": "restart_services",
+      "type": "string",
+      "label": {
+        "en": "Services Gladys may restart",
+        "fr": "Services que Gladys peut redémarrer"
+      },
+      "description": {
+        "en": "Empty: no service can be restarted. Otherwise the names of the services (as the Services page of the web admin lists them), separated by commas, 16 at most: each gets a \"Restart\" button. Restarting nginx or yunohost-api from Gladys cuts its own answer.",
+        "fr": "Vide : aucun service ne peut être redémarré. Sinon les noms des services (tels que la page Services de l’administration web les liste), séparés par des virgules, 16 au plus : chacun reçoit un bouton « Restart ». Redémarrer nginx ou yunohost-api depuis Gladys coupe sa propre réponse."
+      },
+      "placeholder": {
+        "en": "e.g. redis-server, php8.2-fpm",
+        "fr": "ex. redis-server, php8.2-fpm"
+      },
+      "required": false,
+      "default": ""
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
+      "key": "test_connection",
+      "label": { "en": "Test the connection", "fr": "Tester la connexion" },
+      "description": {
+        "en": "Reads the server when a reading is due (never sooner than the refresh), then gives the status. Refused credentials are tried once more, after the wait that keeps fail2ban away; a changed certificate stays refused.",
+        "fr": "Lit le serveur quand une lecture est due (jamais avant le rafraîchissement), puis donne l’état. Des identifiants refusés sont réessayés une fois, après l’attente qui tient fail2ban à l’écart ; un certificat changé reste refusé."
+      },
       "timeout_seconds": 30
     },
     {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
-    }
-  ],
-  "scene_triggers": [
-    {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
-      "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
+      "key": "trust_certificate",
+      "label": {
+        "en": "Trust the certificate met",
+        "fr": "Faire confiance au certificat rencontré"
       },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
-        },
-        {
-          "key": "target",
-          "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
-          "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
-          ]
-        }
-      ],
-      "variables": [
-        {
-          "key": "target",
-          "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
-        }
-      ]
-    }
-  ],
-  "scene_actions": [
-    {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
       "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
+        "en": "Only when the status says the server presents another certificate. First click: shows its fingerprint (compare it with the one of your server). Second click within 2 minutes: Gladys trusts it.",
+        "fr": "Seulement quand l’état dit que le serveur présente un autre certificat. Premier clic : affiche son empreinte (comparez-la avec celle de votre serveur). Second clic dans les 2 minutes : Gladys lui fait confiance."
       },
-      "timeout_seconds": 15,
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ],
-      "outputs": [
-        {
-          "key": "signalled",
-          "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
-        }
-      ]
-    }
-  ],
-  "widgets": [
-    {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
-      "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
-      },
-      "icon": "activity",
-      "action_timeout_seconds": 15
+      "timeout_seconds": 15
     }
   ]
 }
