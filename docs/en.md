@@ -64,24 +64,30 @@ none of its code.
 
 ## The HTTPS certificate
 
-Gladys checks the certificate of the server by its SHA-256 fingerprint, right
-after the TLS handshake and **before** sending the password (a server reached
-by its local address shows a certificate that is not made out to that
-address, so no authority can vouch for it here):
+Gladys checks the certificate of the server right after the TLS handshake and
+**before** sending the password:
 
-- the field empty, at the first connection: Gladys writes the certificate
-  met to its storage, **then** sends the password. If its storage cannot be
-  read or written, nothing is learned and nothing is sent (the status shows
-  the fingerprint met; the storage is read again every 10 s);
-- afterwards, another certificate stops everything (nothing is sent) and the
-  status shows its fingerprint. Saving the form again changes nothing. Check
-  the fingerprint (your browser shows it: padlock, certificate, SHA-256),
-  then press **Trust the certificate met** twice within 2 minutes (the first
-  press shows the fingerprint, the second trusts it), or type it in
-  **Certificate fingerprint**;
-- **Let's Encrypt** renews the certificate every two or three months, with a
-  new key: expect this check each time. A fingerprint typed in the form is
-  the only one trusted until you change it.
+- a certificate that a **public authority** vouches for, made out to the
+  address you typed (a domain with its Let's Encrypt certificate): accepted
+  as a browser would, never pinned; its renewals (every two or three months,
+  with a new key) are accepted too;
+- any other certificate (self-signed, an IP address, a `.local` name, or a
+  certificate made out to another name than the address typed): checked by
+  its SHA-256 fingerprint. The field empty, at the first connection: Gladys
+  writes the certificate met to its storage, **then** sends the password. If
+  its storage cannot be read or written, nothing is learned and nothing is
+  sent (the status shows the fingerprint met; the storage is read again every
+  10 s). Afterwards, another certificate stops everything (nothing is sent)
+  and the status shows its fingerprint;
+- a server whose certificate verified before and no longer does (expired, a
+  self-signed one put back): everything stops, nothing is sent, it is never
+  learned silently;
+- after a stop, saving the form again changes nothing. Check the fingerprint
+  (your browser shows it: padlock, certificate, SHA-256), then press **Trust
+  the certificate met** twice within 2 minutes (the first press shows the
+  fingerprint, the second trusts it: it is pinned from then on), or type it in
+  **Certificate fingerprint**. A fingerprint typed in the form is the only one
+  trusted until you change it, even when an authority vouches for another.
 
 ## The actions
 

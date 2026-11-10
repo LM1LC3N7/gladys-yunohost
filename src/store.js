@@ -4,7 +4,11 @@
 // (0600):
 //   - `salt`: a random key drawn once, for the marker below;
 //   - `pins`: the SHA-256 fingerprint of the HTTPS certificate of the server,
-//     per address (not a secret: the server shows it to anyone);
+//     per address (not a secret: the server shows it to anyone), for a
+//     certificate no public authority vouches for;
+//   - `publicKeys`: the addresses whose certificate verified (a public
+//     authority, the name typed): never pinned; one that stops verifying
+//     there stops everything until the user agrees;
 //   - `certChanged`: `{ key, seen }`, another certificate met at that address
 //     (its fingerprint, shown in the status): nothing is sent there until the
 //     user types that fingerprint or trusts it with the two-click button;
@@ -180,7 +184,12 @@ export function normalizeMemory(raw, now, random = randomBytes) {
       if (ACTION.test(name) && finite(time)) at[name] = Math.min(time, now);
     }
   }
+  const rawPublic = own(raw, 'publicKeys');
+  const publicKeys = Array.isArray(rawPublic)
+    ? [...new Set(rawPublic.filter((k) => typeof k === 'string' && KEY.test(k)))].slice(-MAX_PINS)
+    : [];
   return {
+    publicKeys,
     salt: typeof salt === 'string' && HEX(64).test(salt) ? salt : random(32).toString('hex'),
     pins,
     certChanged: keyed(own(raw, 'certChanged'), {
@@ -207,6 +216,7 @@ export function normalizeMemory(raw, now, random = randomBytes) {
 export const serializeMemory = (m) => ({
   salt: m.salt,
   pins: { ...m.pins },
+  publicKeys: [...m.publicKeys],
   certChanged: m.certChanged,
   refused: m.refused,
   pause: m.pause,

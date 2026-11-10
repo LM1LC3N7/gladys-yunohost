@@ -178,5 +178,29 @@
     "file": "src/config.js",
     "from": "    if (url.protocol === 'http:') return { error: 'http' };\n",
     "to": ""
+  },
+  {
+    "name": "http: an unverified certificate said verified",
+    "file": "src/ynh/http.js",
+    "from": "socket.authorized === true",
+    "to": "true"
+  },
+  {
+    "name": "checkPeer: a public certificate pinned (renewal blocked)",
+    "file": "src/app.js",
+    "from": "    if (authorized) {\n      if (!m.publicKeys.includes(key)) {",
+    "to": "    if (false) {\n      if (!m.publicKeys.includes(key)) {"
+  },
+  {
+    "name": "checkPeer: public then invalid pinned silently",
+    "file": "src/app.js",
+    "from": "    if (m.publicKeys.includes(key)) {\n      // It verified before",
+    "to": "    if (false) {\n      // It verified before"
+  },
+  {
+    "name": "trust: public mark kept after a pin",
+    "file": "src/app.js",
+    "from": "    m.publicKeys = m.publicKeys.filter((k) => k !== key);\n    if (!(await this.save())) {",
+    "to": "    if (!(await this.save())) {"
   }
 ]

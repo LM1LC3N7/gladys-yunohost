@@ -65,9 +65,11 @@ test/                    node --test, fake Gladys (SDK) + fake server + loopback
 - **/data**: every read and write bounded in time; a FIFO never waited for;
   unreadable is not empty (no pin learned, no action), read again every 10 s,
   one read at a time, what memory decided meanwhile merged.
-- **The certificate** is checked before any byte is written; a first pin is
-  written to /data before the password goes. Never turn the check off. HTTPS
-  only.
+- **The certificate** is checked before any byte is written: one Node
+  verifies (public authority, name typed) is accepted unpinned; any other is
+  pinned, the first pin written to /data before the password goes; one that
+  stops verifying at a public address stops everything. Never turn the check
+  off. HTTPS only.
 - **Secrets and personal data**: the password, the session cookie, the
   domains, app names and messages of the server are never in a log, an error
   message, a status, a state or /data (`test/app.test.js` checks it).

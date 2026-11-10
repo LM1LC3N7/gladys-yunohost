@@ -940,3 +940,66 @@ test('a reading that starts while a refusal stands (a timer armed before it) sen
   assert.equal(srv.logins, 1, 'only the test button tries a refused login');
   await app.stop();
 });
+
+test('a certificate of a public authority: accepted, never pinned, its renewals too', async () => {
+  const store = memoryStore();
+  const srv = createFakeServer();
+  srv.authorized = true;
+  const { gladys, wait, app } = await setup({ srv, store });
+  assert.equal(status(gladys).connected, true);
+  assert.equal(store.data.pins[KEY], undefined, 'never pinned');
+  assert.deepEqual(store.data.publicKeys, [KEY]);
+  // A Let's Encrypt renewal: a new key, still verified.
+  srv.fingerprint = OTHER_FINGERPRINT;
+  await wait(POLL);
+  assert.equal(status(gladys).connected, true);
+  assert.equal(store.data.certChanged, null);
+  assert.equal(store.data.pins[KEY], undefined);
+  await app.stop();
+});
+
+test('a public certificate that stops verifying: everything stops, never pinned silently; two clicks pin it', async () => {
+  const store = memoryStore();
+  const srv = createFakeServer();
+  srv.authorized = true;
+  const { gladys, wait, app } = await setup({ srv, store });
+  srv.authorized = false;
+  const count = srv.sent.length;
+  await wait(POLL);
+  assert.equal(srv.sent.length, count, 'not a byte to the certificate that no longer verifies');
+  assert.equal(status(gladys).connected, false);
+  assert.match(status(gladys).message.en, new RegExp(`another HTTPS certificate .*${FINGERPRINT}`));
+  assert.equal(store.data.pins[KEY], undefined, 'no silent pin');
+  assert.equal(store.data.certChanged.seen, FINGERPRINT);
+  await wait(HOUR);
+  assert.equal(srv.sent.length, count);
+  await gladys.fake.action('trust_certificate');
+  await gladys.fake.action('trust_certificate');
+  assert.equal(store.data.pins[KEY], FINGERPRINT);
+  assert.deepEqual(store.data.publicKeys, [], 'the pin rules this address now');
+  await wait(SECOND);
+  assert.equal(status(gladys).connected, true);
+  await app.stop();
+});
+
+test('a public mark kept across a restart: a certificate that no longer verifies is refused at once', async () => {
+  const store = memoryStore({ salt: 'ab'.repeat(32), pins: {}, publicKeys: [KEY] });
+  const srv = createFakeServer();
+  const { gladys, app } = await setup({ srv, store });
+  assert.equal(srv.sent.length, 0);
+  assert.match(status(gladys).message.en, /another HTTPS certificate/);
+  assert.equal(store.data.pins[KEY], undefined);
+  await app.stop();
+});
+
+test('a fingerprint typed rules even over a certificate a public authority vouches for', async () => {
+  const srv = createFakeServer();
+  srv.authorized = true;
+  const { gladys, app } = await setup({
+    srv,
+    config: { certificate_fingerprint: OTHER_FINGERPRINT },
+  });
+  assert.equal(srv.sent.length, 0);
+  assert.match(status(gladys).message.en, /not the fingerprint you typed/);
+  await app.stop();
+});

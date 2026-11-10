@@ -2,8 +2,8 @@
 
 A [Gladys Assistant](https://gladysassistant.com) external integration for
 **YunoHost** servers (11.1 or later), through the API of their web
-administration, in HTTPS with a pinned certificate and an administrator
-account.
+administration, in HTTPS (a certificate of a public authority, or else a
+pinned one) with an administrator account.
 
 - One device per server: YunoHost version, system packages and apps to
   upgrade, major upgrade available, pending migrations, age of the package

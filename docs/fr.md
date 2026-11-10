@@ -74,25 +74,31 @@ ne contient rien de son code.
 
 ## Le certificat HTTPS
 
-Gladys vérifie le certificat du serveur par son empreinte SHA-256, juste après
-la négociation TLS et **avant** d’envoyer le mot de passe (un serveur joint par
-son adresse locale présente un certificat qui n’est pas établi pour cette
-adresse : aucune autorité ne peut s’en porter garante ici) :
+Gladys vérifie le certificat du serveur juste après la négociation TLS et
+**avant** d’envoyer le mot de passe :
 
-- champ vide, à la première connexion : Gladys écrit le certificat rencontré
-  dans son stockage, **puis** envoie le mot de passe. Si son stockage est
-  illisible ou non inscriptible, rien n’est appris et rien n’est envoyé (l’état
-  donne l’empreinte rencontrée ; le stockage est relu toutes les 10 s) ;
-- ensuite, un autre certificat arrête tout (rien n’est envoyé) et l’état donne
-  son empreinte. Enregistrer à nouveau le formulaire ne change rien. Vérifiez
+- un certificat garanti par une **autorité publique**, établi pour l’adresse
+  saisie (un domaine avec son certificat Let’s Encrypt) : accepté comme le
+  ferait un navigateur, jamais épinglé ; ses renouvellements (tous les deux ou
+  trois mois, avec une nouvelle clé) sont acceptés aussi ;
+- tout autre certificat (auto-signé, une adresse IP, un nom en `.local`, ou un
+  certificat établi pour un autre nom que l’adresse saisie) : vérifié par son
+  empreinte SHA-256. Champ vide, à la première connexion : Gladys écrit le
+  certificat rencontré dans son stockage, **puis** envoie le mot de passe. Si
+  son stockage est illisible ou non inscriptible, rien n’est appris et rien
+  n’est envoyé (l’état donne l’empreinte rencontrée ; le stockage est relu
+  toutes les 10 s). Ensuite, un autre certificat arrête tout (rien n’est
+  envoyé) et l’état donne son empreinte ;
+- un serveur dont le certificat était valide et ne l’est plus (expiré, un
+  auto-signé remis) : tout s’arrête, rien n’est envoyé, il n’est jamais appris
+  en silence ;
+- après un arrêt, enregistrer à nouveau le formulaire ne change rien. Vérifiez
   l’empreinte (votre navigateur la montre : cadenas, certificat, SHA-256),
   puis appuyez deux fois en 2 minutes sur **Faire confiance au certificat
-  rencontré** (le premier appui montre l’empreinte, le second l’approuve), ou
-  saisissez-la dans **Empreinte du certificat** ;
-- **Let’s Encrypt** renouvelle le certificat tous les deux ou trois mois, avec
-  une nouvelle clé : comptez cette vérification à chaque fois. Une empreinte
-  saisie dans le formulaire est la seule approuvée tant que vous ne la changez
-  pas.
+  rencontré** (le premier appui montre l’empreinte, le second l’approuve : il
+  est épinglé dès lors), ou saisissez-la dans **Empreinte du certificat**. Une
+  empreinte saisie dans le formulaire est la seule approuvée tant que vous ne
+  la changez pas, même si une autorité en garantit une autre.
 
 ## Les actions
 

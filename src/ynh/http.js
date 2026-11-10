@@ -6,13 +6,15 @@
 // connection reused (`agent: false`, and never a custom `createConnection`:
 // Node would then ignore it and open a second socket).
 //
-// A YunoHost reached by its local address presents a self-signed certificate,
-// or the Let's Encrypt one of a domain that is not the address typed: no
-// authority can vouch for it here. The certificate is checked by its SHA-256
-// fingerprint instead, right after the TLS handshake and BEFORE a single byte
-// of the request (password, session cookie) is written: `checkPeer(fingerprint)`
-// (async) decides, and may take its time (the app writes a first pin to /data
-// there). Then `beforeSend()` runs, the very last check of an action. What
+// Node verifies the certificate as usual (the chain up to a public authority
+// of its trust store, and the name typed: `checkServerIdentity`), and gives
+// the verdict in `socket.authorized`; the handshake is not cut by it
+// (`rejectUnauthorized: false`) because a YunoHost reached by its local
+// address presents a self-signed certificate, or one made out to a domain
+// that is not the address typed, which the app pins instead. Right after the
+// TLS handshake and BEFORE a single byte of the request (password, session
+// cookie) is written, `checkPeer(fingerprint, authorized)` (async) decides,
+// and may take its time (the app writes a first pin to /data there). Then `beforeSend()` runs, the very last check of an action. What
 // either throws is rethrown marked `notSent`. `signal` (an AbortSignal) cuts
 // the exchange (a stop during a long action).
 //
@@ -52,7 +54,7 @@ function transportError(err, sent) {
  * @param {string} [options.body]
  * @param {number} options.timeout ms for the whole exchange
  * @param {number} options.maxBytes body size cap
- * @param {(fingerprint: string) => Promise<void>|void} options.checkPeer
+ * @param {(fingerprint: string, authorized: boolean) => Promise<void>|void} options.checkPeer
  * @param {() => void} [options.beforeSend]
  * @param {AbortSignal} [options.signal]
  */
@@ -103,7 +105,8 @@ export function ynhRequest(
         if (typeof checkPeer !== 'function') {
           throw new YnhError(CODES.BAD_ANSWER, 'No certificate check');
         }
-        await checkPeer(fingerprint);
+        // Node's own verdict: a valid chain to a public authority AND the name typed.
+        await checkPeer(fingerprint, socket.authorized === true);
         if (settled) return;
         if (early) throw new YnhError(CODES.BAD_ANSWER, 'Answer before the request');
         beforeSend?.();
@@ -130,7 +133,7 @@ export function ynhRequest(
           ...headers,
         },
       };
-      // Checked by its fingerprint above, not by an authority.
+      // Verified by Node all the same (socket.authorized); a failure is decided above.
       options.rejectUnauthorized = false;
       if (!isIP(bare)) options.servername = bare;
       req = https.request(options, (res) => {

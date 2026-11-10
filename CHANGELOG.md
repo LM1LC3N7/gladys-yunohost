@@ -17,8 +17,10 @@ the notes of the version's GitHub Release.
   available, pending migrations, age of the package lists, services down and
   per service running, diagnosis errors and warnings, local backups and the
   age of the newest, last action.
-- HTTPS with the certificate pinned before the password is sent; another
-  certificate stops everything until it is trusted (two clicks) or typed.
+- HTTPS: a certificate of a public authority for the name typed accepted as
+  Node verifies it (Let's Encrypt renewals included); any other pinned before
+  the password is sent; another one, or a public one that stops verifying,
+  stops everything until it is trusted (two clicks) or typed.
 - After a refused login, no other login for 5 min, doubling per refusal in a
   row (fail2ban).
 - Buttons, off by default: upgrade the system, upgrade the apps (one option),

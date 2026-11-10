@@ -29,6 +29,8 @@ export function createFakeServer({
 } = {}) {
   const srv = {
     fingerprint,
+    /** Whether Node would verify the certificate (a public authority, the name typed). */
+    authorized: false,
     username,
     password,
     version: '12.1.41.2',
@@ -82,7 +84,7 @@ export function createFakeServer({
         throw new YnhError(CODES.LATE, 'Cut by a stop', { notSent: true });
       }
       try {
-        await options.checkPeer(srv.fingerprint);
+        await options.checkPeer(srv.fingerprint, srv.authorized === true);
         options.beforeSend?.();
       } catch (err) {
         throw Object.assign(err, { notSent: true });

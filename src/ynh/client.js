@@ -98,7 +98,7 @@ export class YnhClient {
    * @param {number} options.port
    * @param {string} options.username
    * @param {string} options.password
-   * @param {(fingerprint: string) => Promise<void>|void} options.checkPeer
+   * @param {(fingerprint: string, authorized: boolean) => Promise<void>|void} options.checkPeer
    * @param {() => void} [options.loginGate] throws a LOGIN_GATE YnhError when no login may be sent
    * @param {(status: number) => void} [options.onLogin] the outcome of each login sent (200, 401...)
    * @param {Function} [options.request] the transport (tests inject a fake server)

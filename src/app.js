@@ -398,6 +398,9 @@ export class YnhApp {
       disk.loginGate = ram.loginGate;
     }
     if (ram.certChanged) disk.certChanged = ram.certChanged;
+    for (const key of ram.publicKeys) {
+      if (!disk.publicKeys.includes(key)) disk.publicKeys = [...disk.publicKeys, key].slice(-8);
+    }
     for (const [key, fp] of Object.entries(ram.pins)) {
       if (!disk.pins[key]) {
         prunePins(disk.pins, key);
@@ -521,7 +524,7 @@ export class YnhApp {
       port: config.port,
       username: config.username,
       password: config.password,
-      checkPeer: (fingerprint) => this.checkPeer(session, fingerprint),
+      checkPeer: (fingerprint, authorized) => this.checkPeer(session, fingerprint, authorized),
       loginGate: () => this.loginGate(),
       onLogin: (status) => this.loginAnswered(session, status),
       ...(this.request ? { request: this.request } : {}),
@@ -671,13 +674,19 @@ export class YnhApp {
   // --- The certificate ---------------------------------------------------------
 
   /**
-   * Right after the TLS handshake, before any byte is written: the
-   * certificate of the server must be the fingerprint typed, else the pin
-   * kept in /data; with neither, it is learned, written to /data BEFORE the
-   * request goes. /data unreadable or not writable: nothing learned, nothing
-   * sent.
+   * Right after the TLS handshake, before any byte is written:
+   *   - a fingerprint typed: the certificate must be that one, nothing else;
+   *   - a certificate Node verified (a public authority, the name typed:
+   *     `authorized`): accepted, never pinned, a renewal (Let's Encrypt, a
+   *     new key) included; the address is marked "public" in /data;
+   *   - any other certificate (self-signed, an IP address, a .local name):
+   *     the pin kept in /data, else learned and written to /data BEFORE the
+   *     request goes. At an address marked "public", a certificate that no
+   *     longer verifies is never pinned silently: everything stops until the
+   *     user trusts it (two clicks) or types it.
+   * /data unreadable or not writable: nothing learned, nothing sent.
    */
-  async checkPeer(session, fingerprint) {
+  async checkPeer(session, fingerprint, authorized = false) {
     if (session !== this.session) throw new YnhError(CODES.LATE, 'Configuration changed');
     const m = this.memory;
     const key = this.key();
@@ -696,6 +705,22 @@ export class YnhApp {
         await this.save();
       }
       return;
+    }
+    if (authorized) {
+      if (!m.publicKeys.includes(key)) {
+        // Remembered in memory at once, in /data when it can be written
+        // (merged there later otherwise): what was public stays public.
+        m.publicKeys = [...m.publicKeys.filter((k) => k !== key), key].slice(-8);
+        await this.save();
+        this.logger.info('HTTPS certificate of the server verified by a public authority');
+      }
+      return;
+    }
+    if (m.publicKeys.includes(key)) {
+      // It verified before, it does not now: never learned silently.
+      throw new YnhError(CODES.CERTIFICATE, 'The certificate no longer verifies', {
+        fingerprint,
+      });
     }
     const pin = m.pins[key];
     if (pin) {
@@ -746,14 +771,17 @@ export class YnhApp {
       return T.trust.confirm(changed.seen);
     }
     this.trustPending = null;
-    const before = { pin: m.pins[key], changed: m.certChanged };
+    const before = { pin: m.pins[key], changed: m.certChanged, publicKeys: m.publicKeys };
     prunePins(m.pins, key);
     m.pins[key] = changed.seen;
     m.certChanged = null;
+    // Trusted by its fingerprint from now on: the pin rules this address.
+    m.publicKeys = m.publicKeys.filter((k) => k !== key);
     if (!(await this.save())) {
       if (before.pin) m.pins[key] = before.pin;
       else delete m.pins[key];
       m.certChanged = before.changed;
+      m.publicKeys = before.publicKeys;
       throw new Error(T.trust.notKept.en);
     }
     this.logger.info('The certificate met was trusted by the user (two clicks): pinned');

@@ -20,7 +20,8 @@ up to date at the end of every milestone.
       `credentials` `user:password`, the `yunohost.admin` cookie; GET
       `/versions` (needed), `/update`, `/services`, `/diagnosis`, `/backups`
       (+ the date of the newest archive, read once per archive) secondary;
-      HTTPS only, the certificate checked by its SHA-256 fingerprint before any
+      HTTPS only, a certificate of a public authority accepted as Node verifies
+      it, any other checked by its SHA-256 fingerprint before any
       byte is written (pinned in /data at the first contact, written before
       the password is sent; or typed; or trusted by a two-click button); a
       login gate after a refusal (fail2ban); one device (12 features + one
@@ -63,8 +64,7 @@ up to date at the end of every milestone.
       `/update/all`, it fetches from the internet), run the diagnosis, the
       free disk space (diagnosis `systemresources` data), the apps and their
       versions, the domains and their certificates (expiry), a log out at
-      stop, accepting automatically a Let's Encrypt renewal for the same
-      names (needs Louis's decision: see Decisions).
+      stop.
 
 ## Decisions
 
@@ -106,16 +106,19 @@ up to date at the end of every milestone.
   seconds: without an answer by 4.5 s the press fails with "sent, without an
   answer yet" (never a success), and the service is read again 5 s after an
   answer (running, and `last_state_change` moved).
-- **Certificate**: as gladys-qnap-qsw (first pin written before the password;
-  /data unreadable or not writable: nothing learned nor sent). Another
-  certificate stops everything until it is trusted: its fingerprint typed in
-  the form, or the "Trust the certificate met" button pressed twice within 2
-  minutes (the first press shows the fingerprint; only the certificate met
-  and refused can be trusted; written to /data first). Let's Encrypt
-  renews with a new key every 60 to 90 days, so a user on a domain sees this
-  every renewal: accepting a renewal signed by a public authority for the
-  same names automatically was **not** done (the brief says "a change blocks
-  until agreed"): Louis's decision.
+- **Certificate** (decided by the lot coordinator, 2026-11-10): a certificate
+  Node verifies (the chain to a public authority of its trust store and the
+  name typed, `socket.authorized`, computed by Node even with
+  `rejectUnauthorized: false`) is accepted and never pinned, renewals
+  included; the address is marked `publicKeys` in /data. Any other
+  certificate: as gladys-qnap-qsw (first pin written before the password;
+  /data unreadable or not writable: nothing learned nor sent; another one
+  stops everything). At an address marked public, a certificate that no
+  longer verifies stops everything, never pinned silently. A stop is lifted by
+  the fingerprint typed in the form (always the authority, even over a valid
+  certificate), or the "Trust the certificate met" button pressed twice
+  within 2 minutes (only the certificate met and refused; written to /data
+  first; the address then follows its pin, the public mark dropped).
 - **Identity**: the pinned certificate is the identity of the server; no
   other identifier is kept (the domains are personal). The external id is
   fixed (`server:main`).

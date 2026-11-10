@@ -63,17 +63,20 @@ test('HTTPS: the fingerprint is checked first, then the request goes; one connec
   const s = await server((req, res) => res.end('{"result":"None"}'));
   t.after(() => s.close());
   const seen = [];
+  const verdicts = [];
   const res = await ynhRequest(target(s.port, '/yunohost/api/upgrade/system', 'POST'), {
     body: 'x',
     timeout: 5000,
     maxBytes: 1000,
-    checkPeer: async (fingerprint) => {
+    checkPeer: async (fingerprint, authorized) => {
       seen.push(fingerprint);
+      verdicts.push(authorized);
       await new Promise((resolve) => setTimeout(resolve, 20));
     },
   });
   assert.equal(res.status, 200);
   assert.deepEqual(seen, [CERT.fingerprint256]);
+  assert.deepEqual(verdicts, [false], 'Node does not verify a self-signed certificate');
   assert.equal(s.requests[0].body, 'x');
   assert.match(s.requests[0].headers['user-agent'], /^gladys-yunohost\/\d+\.\d+\.\d+ \(\+https:/);
   assert.doesNotMatch(s.requests[0].headers['user-agent'], /Mozilla|Chrome|Safari/);

@@ -85,8 +85,8 @@ const MISSING = {
 };
 
 const TRUST = {
-  en: 'If you renewed or replaced the certificate (Let’s Encrypt renews it every two or three months), check this fingerprint in the web admin of YunoHost (or with your browser), then press "Trust the certificate met" twice, or type it in the "Certificate fingerprint" field.',
-  fr: 'Si vous avez renouvelé ou remplacé le certificat (Let’s Encrypt le renouvelle tous les deux ou trois mois), vérifiez cette empreinte dans l’administration de YunoHost (ou avec votre navigateur), puis appuyez deux fois sur « Faire confiance au certificat rencontré », ou saisissez-la dans le champ « Empreinte du certificat ».',
+  en: 'If you replaced the certificate, or the server no longer has one a public authority vouches for, check this fingerprint in the web admin of YunoHost (or with your browser), then press "Trust the certificate met" twice, or type it in the "Certificate fingerprint" field.',
+  fr: 'Si vous avez remplacé le certificat, ou si le serveur n’en a plus un garanti par une autorité publique, vérifiez cette empreinte dans l’administration de YunoHost (ou avec votre navigateur), puis appuyez deux fois sur « Faire confiance au certificat rencontré », ou saisissez-la dans le champ « Empreinte du certificat ».',
 };
 
 /** The names of the actions, in the texts. */
