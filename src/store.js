@@ -9,8 +9,9 @@
 //   - `publicKeys`: the addresses whose certificate verified (a public
 //     authority, the name typed): never pinned; one that stops verifying
 //     there stops everything until the user agrees;
-//   - `certChanged`: `{ key, seen }`, another certificate met at that address
-//     (its fingerprint, shown in the status): nothing is sent there until the
+//   - `certChanged`: `{ key, seen, why? }`, another certificate met at that
+//     address (its fingerprint, shown in the status; `why` when a public one
+//     stopped verifying: expired, name, authority): nothing is sent there until the
 //     user types that fingerprint or trusts it with the two-click button;
 //   - `refused`: `{ key, user, tag }`, the login the server refused: `tag` is
 //     8 bits of an HMAC of the refused password (a marker: 1 password in 256
@@ -157,6 +158,14 @@ const keyed = (value, fields) => {
 };
 const finite = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0;
 
+/** `{ key, seen, why? }`: `why` only one of the fixed words of a public certificate that stopped verifying. */
+function certChangedOf(raw) {
+  const c = keyed(raw, { seen: (v) => typeof v === 'string' && FINGERPRINT.test(v) });
+  if (!c) return null;
+  const why = own(raw, 'why');
+  return ['expired', 'name', 'authority'].includes(why) ? { ...c, why } : c;
+}
+
 /** The persisted state, repaired and bounded against `now` (wall clock). */
 export function normalizeMemory(raw, now, random = randomBytes) {
   const salt = own(raw, 'salt');
@@ -192,9 +201,7 @@ export function normalizeMemory(raw, now, random = randomBytes) {
     publicKeys,
     salt: typeof salt === 'string' && HEX(64).test(salt) ? salt : random(32).toString('hex'),
     pins,
-    certChanged: keyed(own(raw, 'certChanged'), {
-      seen: (v) => typeof v === 'string' && FINGERPRINT.test(v),
-    }),
+    certChanged: certChangedOf(own(raw, 'certChanged')),
     refused: keyed(own(raw, 'refused'), {
       user: (v) => typeof v === 'string' && v.length <= 64,
       tag: (v) => typeof v === 'string' && HEX(2).test(v),

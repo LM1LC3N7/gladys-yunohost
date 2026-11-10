@@ -968,8 +968,19 @@ test('a public certificate that stops verifying: everything stops, never pinned 
   await wait(POLL);
   assert.equal(srv.sent.length, count, 'not a byte to the certificate that no longer verifies');
   assert.equal(status(gladys).connected, false);
-  assert.match(status(gladys).message.en, new RegExp(`another HTTPS certificate .*${FINGERPRINT}`));
+  assert.match(
+    status(gladys).message.en,
+    new RegExp(
+      `no longer verifies \\(no known authority vouches for it; it presents SHA-256 ${FINGERPRINT}`,
+    ),
+  );
+  assert.doesNotMatch(
+    status(gladys).message.en,
+    /than the one learned/,
+    'nothing was learned there',
+  );
   assert.equal(store.data.pins[KEY], undefined, 'no silent pin');
+  assert.equal(store.data.certChanged.why, 'authority');
   assert.equal(store.data.certChanged.seen, FINGERPRINT);
   await wait(HOUR);
   assert.equal(srv.sent.length, count);
@@ -987,7 +998,7 @@ test('a public mark kept across a restart: a certificate that no longer verifies
   const srv = createFakeServer();
   const { gladys, app } = await setup({ srv, store });
   assert.equal(srv.sent.length, 0);
-  assert.match(status(gladys).message.en, /another HTTPS certificate/);
+  assert.match(status(gladys).message.en, /no longer verifies/);
   assert.equal(store.data.pins[KEY], undefined);
   await app.stop();
 });
@@ -1002,4 +1013,173 @@ test('a fingerprint typed rules even over a certificate a public authority vouch
   assert.equal(srv.sent.length, 0);
   assert.match(status(gladys).message.en, /not the fingerprint you typed/);
   await app.stop();
+});
+
+// --- Review r1 -----------------------------------------------------------------
+
+test('checkPeer of an old session (configuration changed meanwhile): refused, nothing learned', async () => {
+  const store = memoryStore();
+  const srv = createFakeServer();
+  const { gladys, app } = await setup({ srv, store });
+  const old = app.session;
+  await gladys.fake.configUpdated({ ...BASE_CONFIG, host: '192.168.1.21' });
+  await assert.rejects(app.checkPeer(old, OTHER_FINGERPRINT, false), { code: CODES.LATE });
+  assert.equal(
+    store.data.pins['https://192.168.1.21:443'],
+    undefined,
+    'nothing learned from the old one',
+  );
+  assert.equal(store.data.pins[KEY], FINGERPRINT);
+  await app.stop();
+});
+
+test('checkPeer judges on the address of its session, never on a configuration not applied yet', async () => {
+  const store = memoryStore();
+  const srv = createFakeServer();
+  const { app } = await setup({ srv, store });
+  // What doStart does before the session is swapped (while /data loads).
+  app.config = { ...app.config, host: '10.9.9.9' };
+  await app.checkPeer(app.session, FINGERPRINT, false);
+  assert.equal(store.data.pins['https://10.9.9.9:443'], undefined);
+  await assert.rejects(app.checkPeer(app.session, OTHER_FINGERPRINT, false), {
+    code: CODES.CERTIFICATE,
+  });
+  await app.stop();
+});
+
+test('a 401 of /versions right after a login that worked: never a refusal of the password', async () => {
+  const store = memoryStore();
+  const srv = createFakeServer();
+  srv.override('/versions', { status: 401, body: '' });
+  const { gladys, app } = await setup({ srv, store });
+  assert.equal(srv.logins, 1, 'one login, no loop of logins');
+  assert.equal(store.data.refused, null);
+  assert.equal(store.data.loginGate, null);
+  assert.match(status(gladys).message.en, /session refused after login/);
+  await app.stop();
+});
+
+test('/data unreadable: the public mark and a certificate refused meanwhile are merged, never lost', async () => {
+  const store = memoryStore({ salt: 'ab'.repeat(32), pins: {} });
+  store.unreadable = true;
+  const srv = createFakeServer();
+  srv.authorized = true;
+  const { gladys, wait, app } = await setup({ srv, store });
+  assert.equal(status(gladys).connected, true, 'a verified certificate needs no /data');
+  srv.authorized = false;
+  await wait(POLL);
+  assert.match(status(gladys).message.en, /no longer verifies/);
+  store.unreadable = false;
+  await wait(10 * SECOND);
+  assert.deepEqual(store.data.publicKeys, [KEY]);
+  assert.equal(store.data.certChanged.seen, FINGERPRINT);
+  assert.equal(store.data.pins[KEY], undefined);
+  await app.stop();
+});
+
+test('trust in two clicks with /data not writable: refused, nothing pinned, still stopped', async () => {
+  const store = memoryStore();
+  const srv = createFakeServer();
+  const { gladys, wait, app } = await setup({ srv, store });
+  srv.fingerprint = OTHER_FINGERPRINT;
+  await wait(POLL);
+  await gladys.fake.action('trust_certificate');
+  store.failing = true;
+  const ack = await gladys.fake.action('trust_certificate');
+  assert.equal(ack.success, false);
+  assert.match(ack.error, /cannot be kept/);
+  assert.equal(store.data.pins[KEY], FINGERPRINT);
+  assert.equal(app.memory.pins[KEY], FINGERPRINT, 'put back in memory too');
+  assert.match(status(gladys).message.en, /another HTTPS certificate/);
+  await app.stop();
+});
+
+test('a refusal stands for its own password only: another one in the configuration is tried', async () => {
+  const store = memoryStore();
+  const srv = createFakeServer({ password: 'other' });
+  const first = await setup({ srv, store });
+  await first.app.stop();
+  srv.password = 'new password';
+  // A reconnection (not a save of the form) with another password than the refused one.
+  const again = await setup({
+    srv,
+    store,
+    now: T0 + 10 * MINUTE,
+    config: { password: 'new password' },
+  });
+  await again.wait(6 * MINUTE);
+  assert.equal(srv.logins, 2);
+  assert.equal(status(again.gladys).connected, true);
+  await again.app.stop();
+});
+
+test('a pin of the self-signed days never lets a no longer valid certificate in at a public address', async () => {
+  const store = memoryStore({
+    salt: 'ab'.repeat(32),
+    pins: { [KEY]: FINGERPRINT },
+    publicKeys: [KEY],
+  });
+  const srv = createFakeServer();
+  const { gladys, app } = await setup({ srv, store });
+  assert.equal(srv.sent.length, 0);
+  assert.match(status(gladys).message.en, /no longer verifies/);
+  await app.stop();
+});
+
+test('a verified certificate drops an old pin of the address', async () => {
+  const store = memoryStore({ salt: 'ab'.repeat(32), pins: { [KEY]: OTHER_FINGERPRINT } });
+  const srv = createFakeServer();
+  srv.authorized = true;
+  const { gladys, app } = await setup({ srv, store });
+  assert.equal(status(gladys).connected, true);
+  assert.equal(store.data.pins[KEY], undefined);
+  await app.stop();
+});
+
+test('the follow-up read of a restart meeting a refused login stops everything (no automatic retry)', async () => {
+  const store = memoryStore();
+  const srv = createFakeServer();
+  srv.autoFinish = () => {
+    // The session expires and the password changes on the server meanwhile.
+    srv.expireSessions();
+    srv.password = 'changed';
+    return { status: 204, headers: {}, body: Buffer.from('') };
+  };
+  const device = serverDevice({ restartable: ['redis-server'] });
+  const { gladys, wait, app } = await setup({
+    srv,
+    store,
+    created: [device],
+    config: { restart_services: 'redis-server' },
+  });
+  await pressKey(gladys, 'restart_redis-server', 1, device);
+  await wait(5 * SECOND);
+  assert.equal(srv.logins, 2);
+  assert.ok(store.data.refused, 'kept in /data');
+  assert.match(status(gladys).message.en, /refused the user name or the password/);
+  await wait(3 * HOUR);
+  assert.equal(srv.logins, 2, 'never again by itself');
+  await app.stop();
+});
+
+test('/data readable again: the status of the /data stop is said no more', async () => {
+  const store = memoryStore(null, { unreadable: true });
+  const srv = createFakeServer();
+  const { gladys, wait, app } = await setup({ srv, store });
+  assert.match(status(gladys).message.en, /\/data\) cannot be read/);
+  store.unreadable = false;
+  await wait(10 * SECOND);
+  assert.match(status(gladys).message.en, /^Started: the server is read in 15 min/);
+  await app.stop();
+});
+
+test('after stop(): a handshake that ends late learns nothing and sends nothing', async () => {
+  const store = memoryStore();
+  const srv = createFakeServer();
+  const { app } = await setup({ srv, store, connect: false });
+  await app.start({ ...BASE_CONFIG });
+  const session = app.session;
+  await app.stop();
+  await assert.rejects(app.checkPeer(session, FINGERPRINT, false), { code: CODES.LATE });
+  assert.equal(store.data?.pins?.[KEY], undefined);
 });

@@ -83,6 +83,20 @@ export const refusalTag = (salt, password) => hmac(salt, `refused|${password}`).
 const userError = (message, cause) =>
   Object.assign(new Error(message, cause ? { cause } : undefined), { user: true });
 
+/** Why Node did not verify a certificate, as one of a few fixed words (never its text). */
+export function unverifiedOf(why) {
+  const code = String(why?.code ?? why ?? '');
+  if (code === 'CERT_HAS_EXPIRED' || code === 'CERT_NOT_YET_VALID') return 'expired';
+  if (code === 'ERR_TLS_CERT_ALTNAME_INVALID' || code.includes('ALTNAME')) return 'name';
+  return 'authority';
+}
+
+/** The status of a certificate refused: another one than pinned, or a public one that no longer verifies. */
+const certificateMessage = (changed) =>
+  changed.why
+    ? T.status.certificateUnverified(changed.why, changed.seen)
+    : T.status.certificateChanged(changed.seen);
+
 /** The key of an action in the delays kept in /data. */
 const cooldownKey = (kind, service) => (kind === 'restart' ? `restart:${service}` : kind);
 const whatOf = (kind, service) =>
@@ -281,15 +295,18 @@ export class YnhApp {
     this.stopped = true;
     this.pause();
     this.action?.controller.abort();
+    this.session?.client?.close();
     return this.serialize(async () => {
       this.pause();
-      if (this.busy)
+      // The requests of a reading were cut by stop() itself (no cookie leaves
+      // after it); the reading is awaited, bounded, never rejecting.
+      if (this.busy) {
         await this.within(
           this.busy.catch(() => {}),
           INTERVALS.STOP_WAIT_MS,
-        );
+        ).catch(() => {});
+      }
       this.action?.controller.abort();
-      this.session?.client?.close();
       if (this.memory) await this.save();
     });
   }
@@ -433,6 +450,10 @@ export class YnhApp {
       this.clearLoopTimer();
       return;
     }
+    // The status of the stop that is over is said no more (review r1 M2).
+    if (!this.online) {
+      await this.setStatus(false, this.failureMessage ?? this.waitingMessage(this.monotonic()));
+    }
     this.schedule();
   }
 
@@ -478,7 +499,9 @@ export class YnhApp {
     if (!this.session || this.session.key !== key) {
       this.session?.client?.close();
       this.resetSession();
-      this.session = { key, client: null };
+      // The address and the fingerprint typed are frozen in the session: a
+      // request of an old session is never judged on a new configuration.
+      this.session = { key, client: null, target: targetKey(config), typed: config.fingerprint };
     }
     if (force) {
       // The password saved is always tried once (after the login gate), whatever its marker.
@@ -524,7 +547,8 @@ export class YnhApp {
       port: config.port,
       username: config.username,
       password: config.password,
-      checkPeer: (fingerprint, authorized) => this.checkPeer(session, fingerprint, authorized),
+      checkPeer: (fingerprint, authorized, why) =>
+        this.checkPeer(session, fingerprint, authorized, why),
       loginGate: () => this.loginGate(),
       onLogin: (status) => this.loginAnswered(session, status),
       ...(this.request ? { request: this.request } : {}),
@@ -613,10 +637,7 @@ export class YnhApp {
         if (this.final?.code === CODES.CERTIFICATE) this.final = null;
         this.logger.info('A certificate fingerprint was typed: it is the one trusted now');
       } else {
-        this.final = {
-          code: CODES.CERTIFICATE,
-          message: T.status.certificateChanged(m.certChanged.seen),
-        };
+        this.final = { code: CODES.CERTIFICATE, message: certificateMessage(m.certChanged) };
       }
     }
     if (dirty) await this.save();
@@ -660,7 +681,7 @@ export class YnhApp {
   loginAnswered(session, status) {
     if (session !== this.session || status !== 401) return;
     const m = this.memory;
-    const key = this.key();
+    const key = session.target;
     const count = Math.min((m.loginGate?.key === key ? m.loginGate.count : 0) + 1, 64);
     const delay = clamp(
       INTERVALS.LOGIN_GATE_MIN_MS * 2 ** (count - 1),
@@ -686,11 +707,13 @@ export class YnhApp {
    *     user trusts it (two clicks) or types it.
    * /data unreadable or not writable: nothing learned, nothing sent.
    */
-  async checkPeer(session, fingerprint, authorized = false) {
-    if (session !== this.session) throw new YnhError(CODES.LATE, 'Configuration changed');
+  async checkPeer(session, fingerprint, authorized = false, why = undefined) {
+    if (session !== this.session || this.stopped) {
+      throw new YnhError(CODES.LATE, 'Configuration changed or stopped');
+    }
     const m = this.memory;
-    const key = this.key();
-    const typed = this.config.fingerprint;
+    const key = session.target;
+    const typed = session.typed;
     if (typed) {
       if (fingerprint !== typed) {
         throw new YnhError(CODES.CERTIFICATE_TYPED, 'Not the certificate typed', {
@@ -707,6 +730,12 @@ export class YnhApp {
       return;
     }
     if (authorized) {
+      if (m.pins[key]) {
+        // A pin of the days of a self-signed certificate: the authority rules
+        // now, and an old pin must never let an unverified certificate in.
+        delete m.pins[key];
+        await this.save();
+      }
       if (!m.publicKeys.includes(key)) {
         // Remembered in memory at once, in /data when it can be written
         // (merged there later otherwise): what was public stays public.
@@ -720,6 +749,7 @@ export class YnhApp {
       // It verified before, it does not now: never learned silently.
       throw new YnhError(CODES.CERTIFICATE, 'The certificate no longer verifies', {
         fingerprint,
+        unverified: unverifiedOf(why),
       });
     }
     const pin = m.pins[key];
@@ -903,7 +933,8 @@ export class YnhApp {
           tag: refusalTag(m.salt, this.config.password),
         };
         this.final = { code: CODES.CREDENTIALS, message: T.status.credentialsRefused };
-        this.session?.client?.close();
+        // The session is dropped, the client kept (the test button may try once).
+        if (this.session?.client) this.session.client.token = null;
         await this.save();
         this.logger.warn(
           'YunoHost refused the user name or the password: not tried again until they are saved again',
@@ -924,11 +955,15 @@ export class YnhApp {
         return undefined;
       }
       case CODES.CERTIFICATE:
-        m.certChanged = { key, seen: err.fingerprint };
+        m.certChanged = {
+          key,
+          seen: err.fingerprint,
+          ...(err.unverified ? { why: err.unverified } : {}),
+        };
         this.trustPending = null;
         this.final = {
           code: CODES.CERTIFICATE,
-          message: T.status.certificateChanged(err.fingerprint),
+          message: certificateMessage(m.certChanged),
         };
         await this.save();
         this.logger.warn('The HTTPS certificate of the server is not the one pinned: nothing sent');
@@ -1457,6 +1492,8 @@ export class YnhApp {
         timeLeft: () => at + TIMEOUTS.REQUEST_MS - this.monotonic(),
       });
     } catch (err) {
+      // A refused login or another certificate met here stops everything, as anywhere.
+      this.follow(err);
       await this.setLastAction(`${what}: not read again (${reasonOf(err).en})`, session);
       return;
     }

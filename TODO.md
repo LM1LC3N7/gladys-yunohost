@@ -119,6 +119,16 @@ up to date at the end of every milestone.
   certificate), or the "Trust the certificate met" button pressed twice
   within 2 minutes (only the certificate met and refused; written to /data
   first; the address then follows its pin, the public mark dropped).
+- **Review r1** (2026-11-10): `stop()` closes the client first (an
+  AbortSignal per client cuts the requests of a reading in flight and refuses
+  the next ones), waits for the reading bounded without rejecting, then
+  writes /data; `checkPeer` refuses after a stop. The address and the typed
+  fingerprint are frozen in the session (`checkPeer`, `loginAnswered`). A
+  verified certificate drops an old pin of the address. A public certificate
+  that stops verifying says why (expired, another name, no authority: from
+  Node's `authorizationError`, fixed words). The follow-up read of a restart
+  follows a final failure as anywhere. Real TLS tests with a test authority
+  (`test/fixtures/certs`, test keys only) through `tls.setDefaultCACertificates`.
 - **Identity**: the pinned certificate is the identity of the server; no
   other identifier is kept (the domains are personal). The external id is
   fixed (`server:main`).

@@ -145,3 +145,93 @@ test('real clock: readings at 0, the interval and twice the interval; timers bou
   assert.equal(store.data.pins[`https://127.0.0.1:${port}`], cert.fingerprint256);
   assert.equal(live.size, 0, 'no timer left after stop');
 });
+
+test('stop() during a slow reading: resolves, /data written, the requests cut, nothing after it', async (t) => {
+  const cert = selfSigned('yunohost');
+  const seen = [];
+  let connections = 0;
+  const server = createServer({ key: cert.key, cert: cert.cert }, (req, res) => {
+    seen.push({ url: req.url, at: performance.now() });
+    if (req.url === '/yunohost/api/login') {
+      res.writeHead(200, { 'set-cookie': `yunohost.admin=${F.TOKEN}; Path=/yunohost/api` });
+      res.end('Logged in');
+      return;
+    }
+    const answer = () => {
+      if (res.destroyed) return;
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(req.url.endsWith('/versions') ? F.versions() : {}));
+    };
+    // Every route but /versions takes 2 s.
+    if (req.url.endsWith('/versions')) answer();
+    else setTimeout(answer, 2000).unref();
+  });
+  server.on('secureConnection', () => (connections += 1));
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(
+    () =>
+      new Promise((resolve) => {
+        server.closeAllConnections?.();
+        server.close(resolve);
+      }),
+  );
+  const live = new Set();
+  const timers = {
+    setTimeout(fn, ms) {
+      const id = setTimeout(() => {
+        live.delete(id);
+        fn();
+      }, ms);
+      live.add(id);
+      return id;
+    },
+    clearTimeout: (id) => {
+      live.delete(id);
+      clearTimeout(id);
+    },
+  };
+  const gladys = createFakeGladys({ selector: 'yunohost', config: {} });
+  await gladys.connect();
+  const quiet = () => {};
+  const store = memoryStore();
+  const app = new YnhApp({
+    gladys,
+    logger: { info: quiet, warn: quiet, error: quiet, debug: quiet },
+    timers,
+    store,
+  });
+  t.after(async () => {
+    await app.stop();
+    for (const id of live) clearTimeout(id);
+  });
+  await app.start({
+    host: `127.0.0.1:${server.address().port}`,
+    username: F.USERNAME,
+    password: F.PASSWORD,
+  });
+  const deadline = performance.now() + 5000;
+  while (!seen.some((r) => r.url.endsWith('/update')) && performance.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  assert.ok(
+    seen.some((r) => r.url.endsWith('/update')),
+    'the slow route reached',
+  );
+  const saves = store.saves;
+  const stopped = performance.now();
+  await app.stop();
+  const took = performance.now() - stopped;
+  assert.ok(took < 1000, `stop() resolved at once (${Math.round(took)} ms)`);
+  assert.ok(store.saves > saves, '/data written at the stop');
+  assert.equal(app.busy, undefined, 'the reading over when stop() resolves');
+  const count = seen.length;
+  const opened = connections;
+  await new Promise((resolve) => setTimeout(resolve, 2500));
+  assert.equal(
+    seen.length,
+    count,
+    `no request after the stop: ${seen.slice(count).map((r) => r.url)}`,
+  );
+  assert.equal(connections, opened, 'no connection after the stop');
+  assert.equal(live.size, 0, 'no timer of the app left');
+});

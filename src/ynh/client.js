@@ -98,7 +98,7 @@ export class YnhClient {
    * @param {number} options.port
    * @param {string} options.username
    * @param {string} options.password
-   * @param {(fingerprint: string, authorized: boolean) => Promise<void>|void} options.checkPeer
+   * @param {(fingerprint: string, authorized: boolean, why?: unknown) => Promise<void>|void} options.checkPeer
    * @param {() => void} [options.loginGate] throws a LOGIN_GATE YnhError when no login may be sent
    * @param {(status: number) => void} [options.onLogin] the outcome of each login sent (200, 401...)
    * @param {Function} [options.request] the transport (tests inject a fake server)
@@ -126,13 +126,20 @@ export class YnhClient {
     this.spacing = new Map();
     /** The date of the newest archive, read once per archive: { name, at }. */
     this.backupDate = null;
+    /** Cuts every reading request in flight and refuses the next ones (a stop, a new session). */
+    this.controller = new AbortController();
+    this.signal = this.controller.signal;
   }
 
   close() {
     this.token = null;
+    this.controller.abort();
   }
 
   async send(method, path, { headers, body, timeLeft, beforeSend, maxBytes, signal }) {
+    // The signal of the reading (cut by a stop or a new session), unless the action brings its own.
+    signal ??= this.signal;
+    if (signal?.aborted) throw new YnhError(CODES.LATE, 'Cut by a stop', { notSent: true });
     const left = timeLeft();
     if (!(left > 0)) throw new YnhError(CODES.LATE, 'No time left', { notSent: true });
     return this.request(

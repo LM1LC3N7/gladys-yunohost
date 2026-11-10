@@ -188,8 +188,8 @@
   {
     "name": "checkPeer: a public certificate pinned (renewal blocked)",
     "file": "src/app.js",
-    "from": "    if (authorized) {\n      if (!m.publicKeys.includes(key)) {",
-    "to": "    if (false) {\n      if (!m.publicKeys.includes(key)) {"
+    "from": "    if (authorized) {\n      if (m.pins[key]) {",
+    "to": "    if (false) {\n      if (m.pins[key]) {"
   },
   {
     "name": "checkPeer: public then invalid pinned silently",
@@ -202,5 +202,179 @@
     "file": "src/app.js",
     "from": "    m.publicKeys = m.publicKeys.filter((k) => k !== key);\n    if (!(await this.save())) {",
     "to": "    if (!(await this.save())) {"
+  },
+  {
+    "name": "review r1 R1 http: request written before the verdict (checkPeer not awaited)",
+    "file": "src/ynh/http.js",
+    "from": "        await checkPeer(fingerprint, socket.authorized === true, socket.authorizationError);",
+    "to": "        checkPeer(fingerprint, socket.authorized === true, socket.authorizationError);"
+  },
+  {
+    "name": "review r1 R2 http: an answer before the request accepted",
+    "file": "src/ynh/http.js",
+    "from": "        if (early) throw new YnhError(CODES.BAD_ANSWER, 'Answer before the request');",
+    "to": ""
+  },
+  {
+    "name": "review r1 R3 http: agent false dropped (global keep-alive agent, sockets reused)",
+    "file": "src/ynh/http.js",
+    "from": "        agent: false,\n",
+    "to": "\n"
+  },
+  {
+    "name": "review r1 R4 http: streaming size cap removed",
+    "file": "src/ynh/http.js",
+    "from": "          if (size > maxBytes) {",
+    "to": "          if (false) {"
+  },
+  {
+    "name": "review r1 R5 app: checkPeer typed fingerprint after the public verdict",
+    "file": "src/app.js",
+    "from": "    const typed = session.typed;\n    if (typed) {",
+    "to": "    const typed = authorized ? \"\" : session.typed;\n    if (typed) {"
+  },
+  {
+    "name": "review r1 R6 app: checkPeer of an old session accepted",
+    "file": "src/app.js",
+    "from": "    if (session !== this.session || this.stopped) {\n      throw new YnhError(CODES.LATE",
+    "to": "    if (false) {\n      throw new YnhError(CODES.LATE"
+  },
+  {
+    "name": "review r1 R7 app: trust in one click",
+    "file": "src/app.js",
+    "from": "      !pending ||\n      pending.seen !== changed.seen ||",
+    "to": "      false ||\n      pending?.seen !== changed.seen && false ||"
+  },
+  {
+    "name": "review r1 R8 app: trust pins without /data written",
+    "file": "src/app.js",
+    "from": "    if (!(await this.save())) {\n      if (before.pin) m.pins[key] = before.pin;",
+    "to": "    if (!(await this.save()) && false) {\n      if (before.pin) m.pins[key] = before.pin;"
+  },
+  {
+    "name": "review r1 R9 app: a certificate change not kept in /data (restart lifts it)",
+    "file": "src/app.js",
+    "from": "        m.certChanged = {\n          key,",
+    "to": "        this.memory.certChangedX = {\n          key,"
+  },
+  {
+    "name": "review r1 R10 app: merge drops a certChanged decided while /data was unreadable",
+    "file": "src/app.js",
+    "from": "    if (ram.certChanged) disk.certChanged = ram.certChanged;",
+    "to": ""
+  },
+  {
+    "name": "review r1 R11 app: merge drops the public marks learned while /data was unreadable",
+    "file": "src/app.js",
+    "from": "      if (!disk.publicKeys.includes(key)) disk.publicKeys = [...disk.publicKeys, key].slice(-8);",
+    "to": ""
+  },
+  {
+    "name": "review r1 R12 store: publicKeys not read back",
+    "file": "src/store.js",
+    "from": "  const publicKeys = Array.isArray(rawPublic)",
+    "to": "  const publicKeys = false"
+  },
+  {
+    "name": "review r1 R13 app: login gate never blocks",
+    "file": "src/app.js",
+    "from": "    if (left > 0) {\n      throw new YnhError(CODES.LOGIN_GATE",
+    "to": "    if (false) {\n      throw new YnhError(CODES.LOGIN_GATE"
+  },
+  {
+    "name": "review r1 R14 app: gate not set by a 401",
+    "file": "src/app.js",
+    "from": "    this.gateDue = this.monotonic() + delay;\n    m.loginGate",
+    "to": "    this.gateDue = undefined;\n    m.loginGate"
+  },
+  {
+    "name": "review r1 R15 client: a 401 of the main route after a fresh login is a credentials refusal",
+    "file": "src/ynh/client.js",
+    "from": "        throw new YnhError(CODES.ACCESS, 'Refused after login (HTTP 401)', { status: 401 });",
+    "to": "        throw new YnhError(CODES.CREDENTIALS, 'Refused after login (HTTP 401)', { status: 401 });"
+  },
+  {
+    "name": "review r1 R16 app: pause not kept in /data",
+    "file": "src/app.js",
+    "from": "      m.pause = { key, until: this.now() + delay, status: err.status };",
+    "to": "      m.pause = null;"
+  },
+  {
+    "name": "review r1 R18 app: refusal tag not compared (any password counts refused)",
+    "file": "src/app.js",
+    "from": "      r.tag === refusalTag(this.memory.salt, c.password),",
+    "to": "      true,"
+  },
+  {
+    "name": "review r1 R19 app: save() of the attempt time after the request",
+    "file": "src/app.js",
+    "from": "    await this.saveAttempt(this.now());\n    if (gone()) return;",
+    "to": "    if (gone()) return;"
+  },
+  {
+    "name": "review r1 R20 app: an expired public cert (authorized false at a public address) re-pinned when a pin exists",
+    "file": "src/app.js",
+    "from": "    if (m.publicKeys.includes(key)) {\n      // It verified before",
+    "to": "    if (m.publicKeys.includes(key) && !m.pins[key]) {\n      // It verified before"
+  },
+  {
+    "name": "review r1 R21 http: a verified certificate said unverified (public certs pinned, renewals blocked)",
+    "file": "src/ynh/http.js",
+    "from": "        await checkPeer(fingerprint, socket.authorized === true, socket.authorizationError);",
+    "to": "        await checkPeer(fingerprint, false, socket.authorizationError);"
+  },
+  {
+    "name": "review r1 R22 http: hostname not checked (authorized = chain only)",
+    "file": "src/ynh/http.js",
+    "from": "      if (!isIP(bare)) options.servername = bare;",
+    "to": "      if (!isIP(bare)) options.servername = bare;\n      options.checkServerIdentity = () => undefined;"
+  },
+  {
+    "name": "review r1 R23 app: stop does not wait for the reading",
+    "file": "src/app.js",
+    "from": "      if (this.busy) {\n        await this.within(",
+    "to": "      if (false) {\n        await this.within("
+  },
+  {
+    "name": "r1 I1: checkPeer accepts after a stop",
+    "file": "src/app.js",
+    "from": "    if (session !== this.session || this.stopped) {",
+    "to": "    if (session !== this.session) {"
+  },
+  {
+    "name": "r1 M4: follow-up of a restart swallows a refusal",
+    "file": "src/app.js",
+    "from": "      this.follow(err);\n      await this.setLastAction(`${what}: not read again",
+    "to": "      await this.setLastAction(`${what}: not read again"
+  },
+  {
+    "name": "r1 M2: status not said again when /data is readable",
+    "file": "src/app.js",
+    "from": "    if (!this.online) {\n      await this.setStatus(false, this.failureMessage",
+    "to": "    if (false) {\n      await this.setStatus(false, this.failureMessage"
+  },
+  {
+    "name": "r1 M3: checkPeer on the configuration, not the session",
+    "file": "src/app.js",
+    "from": "    const key = session.target;\n    const typed = session.typed;",
+    "to": "    const key = this.key();\n    const typed = session.typed;"
+  },
+  {
+    "name": "r1 M1: unverified reason lost",
+    "file": "src/app.js",
+    "from": "        unverified: unverifiedOf(why),\n",
+    "to": "\n"
+  },
+  {
+    "name": "r1: verified certificate keeps an old pin",
+    "file": "src/app.js",
+    "from": "        delete m.pins[key];\n        await this.save();",
+    "to": "        await this.save();"
+  },
+  {
+    "name": "r1 I1: stop() does not cut the requests of the reading",
+    "file": "src/app.js",
+    "from": "    this.action?.controller.abort();\n    this.session?.client?.close();\n    return this.serialize(",
+    "to": "    this.action?.controller.abort();\n    return this.serialize("
   }
 ]

@@ -85,13 +85,14 @@ Gladys vérifie le certificat du serveur juste après la négociation TLS et
   certificat établi pour un autre nom que l’adresse saisie) : vérifié par son
   empreinte SHA-256. Champ vide, à la première connexion : Gladys écrit le
   certificat rencontré dans son stockage, **puis** envoie le mot de passe. Si
-  son stockage est illisible ou non inscriptible, rien n’est appris et rien
-  n’est envoyé (l’état donne l’empreinte rencontrée ; le stockage est relu
-  toutes les 10 s). Ensuite, un autre certificat arrête tout (rien n’est
+  son stockage est illisible, rien n’est appris et rien n’est envoyé (l’état
+  donne l’empreinte rencontrée ; le stockage est relu toutes les 10 s) ; s’il
+  est non inscriptible, de même, réessayé au démarrage suivant (enregistrement
+  du formulaire, reconnexion de Gladys). Ensuite, un autre certificat arrête tout (rien n’est
   envoyé) et l’état donne son empreinte ;
-- un serveur dont le certificat était valide et ne l’est plus (expiré, un
-  auto-signé remis) : tout s’arrête, rien n’est envoyé, il n’est jamais appris
-  en silence ;
+- un serveur dont le certificat était valide et ne l’est plus (expiré, établi
+  pour un autre nom, ou sans autorité connue) : tout s’arrête, rien n’est
+  envoyé, il n’est jamais appris en silence ; l’état dit lequel des trois ;
 - après un arrêt, enregistrer à nouveau le formulaire ne change rien. Vérifiez
   l’empreinte (votre navigateur la montre : cadenas, certificat, SHA-256),
   puis appuyez deux fois en 2 minutes sur **Faire confiance au certificat

@@ -54,7 +54,7 @@ function transportError(err, sent) {
  * @param {string} [options.body]
  * @param {number} options.timeout ms for the whole exchange
  * @param {number} options.maxBytes body size cap
- * @param {(fingerprint: string, authorized: boolean) => Promise<void>|void} options.checkPeer
+ * @param {(fingerprint: string, authorized: boolean, why?: unknown) => Promise<void>|void} options.checkPeer
  * @param {() => void} [options.beforeSend]
  * @param {AbortSignal} [options.signal]
  */
@@ -106,7 +106,12 @@ export function ynhRequest(
           throw new YnhError(CODES.BAD_ANSWER, 'No certificate check');
         }
         // Node's own verdict: a valid chain to a public authority AND the name typed.
-        await checkPeer(fingerprint, socket.authorized === true);
+        await checkPeer(fingerprint, socket.authorized === true, socket.authorizationError);
+        // One turn of the event loop (its I/O phase) before writing: bytes the
+        // peer sent while the verdict was made are read first, never taken
+        // for the answer of a request written after them (a loaded loop can
+        // run the verdict's timer before it reads the socket).
+        await new Promise((resolve) => setImmediate(resolve));
         if (settled) return;
         if (early) throw new YnhError(CODES.BAD_ANSWER, 'Answer before the request');
         beforeSend?.();

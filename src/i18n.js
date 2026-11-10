@@ -89,6 +89,19 @@ const TRUST = {
   fr: 'Si vous avez remplacé le certificat, ou si le serveur n’en a plus un garanti par une autorité publique, vérifiez cette empreinte dans l’administration de YunoHost (ou avec votre navigateur), puis appuyez deux fois sur « Faire confiance au certificat rencontré », ou saisissez-la dans le champ « Empreinte du certificat ».',
 };
 
+/** Why a public certificate no longer verifies (from Node's verdict, fixed words). */
+const UNVERIFIED = {
+  expired: { en: 'expired or not valid yet', fr: 'expiré ou pas encore valide' },
+  name: {
+    en: 'made out to another name than the address typed',
+    fr: 'établi pour un autre nom que l’adresse saisie',
+  },
+  authority: {
+    en: 'no known authority vouches for it',
+    fr: 'aucune autorité connue ne le garantit',
+  },
+};
+
 /** The names of the actions, in the texts. */
 export const ACTION_NAMES = {
   upgrade_system: 'System upgrade',
@@ -180,6 +193,17 @@ export const T = {
           fr: `Le serveur présente un autre certificat HTTPS que celui appris (SHA-256 ${fingerprint}). Rien n’a été envoyé.`,
         },
         TRUST,
+      ),
+    certificateUnverified: (why, fingerprint) =>
+      join(
+        {
+          en: `The HTTPS certificate of the server no longer verifies (${UNVERIFIED[why]?.en ?? UNVERIFIED.authority.en}; it presents SHA-256 ${fingerprint}), while a public authority vouched for it before. Nothing was sent, nothing learned.`,
+          fr: `Le certificat HTTPS du serveur n’est plus valide (${UNVERIFIED[why]?.fr ?? UNVERIFIED.authority.fr} ; il présente SHA-256 ${fingerprint}), alors qu’une autorité publique le garantissait avant. Rien n’a été envoyé, rien appris.`,
+        },
+        {
+          en: 'Renew the certificate in YunoHost; or, if this one is expected, check its fingerprint, then press "Trust the certificate met" twice, or type it in the "Certificate fingerprint" field.',
+          fr: 'Renouvelez le certificat dans YunoHost ; ou, si celui-ci est attendu, vérifiez son empreinte, puis appuyez deux fois sur « Faire confiance au certificat rencontré », ou saisissez-la dans le champ « Empreinte du certificat ».',
+        },
       ),
     certificateTyped: (fingerprint) => ({
       en: `The HTTPS certificate of the server is not the fingerprint you typed (it presents SHA-256 ${fingerprint}). Nothing was sent.`,

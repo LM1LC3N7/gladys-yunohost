@@ -75,13 +75,14 @@ Gladys checks the certificate of the server right after the TLS handshake and
   certificate made out to another name than the address typed): checked by
   its SHA-256 fingerprint. The field empty, at the first connection: Gladys
   writes the certificate met to its storage, **then** sends the password. If
-  its storage cannot be read or written, nothing is learned and nothing is
-  sent (the status shows the fingerprint met; the storage is read again every
-  10 s). Afterwards, another certificate stops everything (nothing is sent)
+  its storage cannot be read, nothing is learned and nothing is sent (the
+  status shows the fingerprint met; the storage is read again every 10 s); if
+  it cannot be written, the same, tried again at the next start (a save of
+  the form, a reconnection of Gladys). Afterwards, another certificate stops everything (nothing is sent)
   and the status shows its fingerprint;
-- a server whose certificate verified before and no longer does (expired, a
-  self-signed one put back): everything stops, nothing is sent, it is never
-  learned silently;
+- a server whose certificate verified before and no longer does (expired,
+  made out to another name, or no known authority): everything stops, nothing
+  is sent, it is never learned silently; the status says which of the three;
 - after a stop, saving the form again changes nothing. Check the fingerprint
   (your browser shows it: padlock, certificate, SHA-256), then press **Trust
   the certificate met** twice within 2 minutes (the first press shows the

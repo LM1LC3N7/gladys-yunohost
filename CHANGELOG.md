@@ -23,6 +23,8 @@ the notes of the version's GitHub Release.
   stops everything until it is trusted (two clicks) or typed.
 - After a refused login, no other login for 5 min, doubling per refusal in a
   row (fail2ban).
+- A public certificate that no longer verifies says why (expired, another
+  name, no authority); a stop cuts a reading in flight and writes /data.
 - Buttons, off by default: upgrade the system, upgrade the apps (one option),
   back up the server (one option), restart the services listed; a delay
   between two presses of the same action.
