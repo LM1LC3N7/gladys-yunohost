@@ -13,7 +13,7 @@ import { createServer as createTlsServer } from 'node:tls';
 import { createServer as createNetServer } from 'node:net';
 import { CODES } from '../src/ynh/errors.js';
 import { ynhRequest } from '../src/ynh/http.js';
-import { selfSigned } from './helpers/selfSigned.js';
+import { selfSigned, serialOf } from './helpers/selfSigned.js';
 
 const CERT = selfSigned('yunohost');
 
@@ -109,12 +109,20 @@ test('HTTPS without a certificate check is refused, nothing sent', async (t) => 
   assert.equal(s.requests.length, 0);
 });
 
-test('an answer before the request (impostor) is never accepted', async (t) => {
-  const tls = createTlsServer({ key: CERT.key, cert: CERT.cert }, (socket) => {
-    socket.write('HTTP/1.1 200 OK\r\ncontent-length: 17\r\n\r\n{"result":"None"}');
-  });
+test('an answer written before the request (impostor), the verdict right after it: never accepted', async (t) => {
+  // Deterministic: the peer writes a forged 200 as soon as TLS is up, then
+  // releases the verdict on the next turn of the loop. The request may only
+  // be written once the bytes already there were read (and refused).
+  let release;
+  let verdict;
+  let received = 0;
   const sockets = new Set();
-  tls.on('connection', (socket) => sockets.add(socket));
+  const tls = createTlsServer({ key: CERT.key, cert: CERT.cert }, (socket) => {
+    sockets.add(socket);
+    socket.on('data', (d) => (received += d.length));
+    socket.write('HTTP/1.1 200 OK\r\ncontent-length: 17\r\n\r\n{"result":"None"}');
+    setImmediate(release);
+  });
   await new Promise((resolve) => tls.listen(0, '127.0.0.1', resolve));
   t.after(
     () =>
@@ -123,14 +131,27 @@ test('an answer before the request (impostor) is never accepted', async (t) => {
         tls.close(resolve);
       }),
   );
-  const err = await ynhRequest(target(tls.address().port, '/x', 'POST'), {
-    body: 'secret',
-    timeout: 3000,
-    maxBytes: 1000,
-    checkPeer: () => new Promise((resolve) => setTimeout(resolve, 100)),
-  }).catch((e) => e);
-  assert.ok(err instanceof Error);
-  assert.equal(err.notSent, true);
+  for (let i = 0; i < 20; i += 1) {
+    // A verdict of its own per round, released by this round's peer.
+    verdict = new Promise((resolve) => (release = resolve));
+    const err = await ynhRequest(target(tls.address().port, '/x', 'POST'), {
+      body: 'secret',
+      timeout: 3000,
+      maxBytes: 1000,
+      checkPeer: () => verdict,
+    }).catch((e) => e);
+    assert.ok(err instanceof Error, `round ${i}: the forged answer was taken`);
+    assert.equal(err.notSent, true);
+  }
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.equal(received, 0, 'not a byte of the request (nor of the secret) sent');
+});
+
+test('the serial number of the test certificates is always a valid DER INTEGER', () => {
+  assert.deepEqual([...serialOf([0x00, 0x10, 1, 2])], [0x01, 0x10, 1, 2]);
+  assert.deepEqual([...serialOf([0xff, 0])], [0x7f, 0]);
+  const c = selfSigned('yunohost', { serial: Buffer.from([0x00, 0x10, 0, 0, 0, 0, 0, 1]) });
+  assert.match(c.fingerprint256, /^[0-9A-F]{2}(:[0-9A-F]{2}){31}$/);
 });
 
 test('beforeSend throwing: nothing sent, marked notSent', async (t) => {

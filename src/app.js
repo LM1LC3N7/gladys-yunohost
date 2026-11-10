@@ -1492,8 +1492,10 @@ export class YnhApp {
         timeLeft: () => at + TIMEOUTS.REQUEST_MS - this.monotonic(),
       });
     } catch (err) {
-      // A refused login or another certificate met here stops everything, as anywhere.
-      this.follow(err);
+      // A refused login or another certificate met here stops everything, as
+      // anywhere; a 5xx (the API restarting after its own restart) never
+      // pauses the readings.
+      if (isFinal(err) || err?.code === CODES.LOGIN_GATE) this.follow(err);
       await this.setLastAction(`${what}: not read again (${reasonOf(err).en})`, session);
       return;
     }

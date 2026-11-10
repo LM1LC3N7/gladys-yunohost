@@ -1183,3 +1183,25 @@ test('after stop(): a handshake that ends late learns nothing and sends nothing'
   await assert.rejects(app.checkPeer(session, FINGERPRINT, false), { code: CODES.LATE });
   assert.equal(store.data?.pins?.[KEY], undefined);
 });
+
+test('the follow-up read of a restart meeting a 502 (the API restarting): no pause of the readings', async () => {
+  const store = memoryStore();
+  const srv = createFakeServer();
+  srv.autoFinish = () => {
+    srv.override('/services/yunohost-api', { status: 502, body: '502 - Bad Gateway' }, 1);
+    return { status: 204, headers: {}, body: Buffer.from('') };
+  };
+  const device = serverDevice({ restartable: ['yunohost-api'] });
+  const { gladys, wait, app } = await setup({
+    srv,
+    store,
+    created: [device],
+    config: { restart_services: 'yunohost-api' },
+  });
+  await pressKey(gladys, 'restart_yunohost-api', 1, device);
+  await wait(5 * SECOND);
+  assert.match(state(gladys, FEATURES.LAST_ACTION), /not read again \(HTTP error 502\)/);
+  assert.equal(store.data.pause, null);
+  assert.equal(status(gladys).connected, true);
+  await app.stop();
+});

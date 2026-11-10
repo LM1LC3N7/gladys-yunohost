@@ -344,7 +344,7 @@
   {
     "name": "r1 M4: follow-up of a restart swallows a refusal",
     "file": "src/app.js",
-    "from": "      this.follow(err);\n      await this.setLastAction(`${what}: not read again",
+    "from": "      if (isFinal(err) || err?.code === CODES.LOGIN_GATE) this.follow(err);\n      await this.setLastAction(`${what}: not read again",
     "to": "      await this.setLastAction(`${what}: not read again"
   },
   {
@@ -376,5 +376,23 @@
     "file": "src/app.js",
     "from": "    this.action?.controller.abort();\n    this.session?.client?.close();\n    return this.serialize(",
     "to": "    this.action?.controller.abort();\n    return this.serialize("
+  },
+  {
+    "name": "r2 M1: no turn of the loop before writing (a forged answer taken)",
+    "file": "src/ynh/http.js",
+    "from": "        await new Promise((resolve) => setImmediate(resolve));\n",
+    "to": ""
+  },
+  {
+    "name": "r2 M2: a 5xx of the follow-up of a restart pauses the readings",
+    "file": "src/app.js",
+    "from": "      if (isFinal(err) || err?.code === CODES.LOGIN_GATE) this.follow(err);\n      await this.setLastAction(`${what}: not read again",
+    "to": "      this.follow(err);\n      await this.setLastAction(`${what}: not read again"
+  },
+  {
+    "name": "r2 I1: serial padding byte allowed again",
+    "file": "test/helpers/selfSigned.js",
+    "from": "  serial[0] = (serial[0] & 0x7f) | 0x01;",
+    "to": "  serial[0] &= 0x7f;"
   }
 ]

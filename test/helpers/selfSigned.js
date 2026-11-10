@@ -33,12 +33,21 @@ const oid = (text) => {
 const name = (cn) => seq(tlv(0x31, seq(oid('2.5.4.3'), tlv(0x0c, Buffer.from(cn)))));
 const time = (text) => tlv(0x17, Buffer.from(text));
 
+/**
+ * A positive DER INTEGER for a serial number: the first byte never 0x00 (an
+ * illegal padding, 1 time in 256 at random) nor above 0x7f (negative).
+ */
+export const serialOf = (bytes) => {
+  const serial = Buffer.from(bytes);
+  serial[0] = (serial[0] & 0x7f) | 0x01;
+  return serial;
+};
+
 /** { key, cert, fingerprint256 } in PEM, for a TLS server on loopback. */
-export function selfSigned(cn = 'Teltonika') {
+export function selfSigned(cn = 'yunohost', { serial: raw = randomBytes(8) } = {}) {
   const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
   const algorithm = seq(oid('1.2.840.113549.1.1.11'), Buffer.from([0x05, 0x00]));
-  const serial = randomBytes(8);
-  serial[0] &= 0x7f;
+  const serial = serialOf(raw);
   const tbs = seq(
     tlv(0xa0, tlv(0x02, Buffer.from([0x02]))),
     tlv(0x02, serial),
