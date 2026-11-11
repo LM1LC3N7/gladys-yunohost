@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-11
+
 ### Added
 
 - First version: one YunoHost server read through the API of its web
@@ -29,4 +31,5 @@ the notes of the version's GitHub Release.
   back up the server (one option), restart the services listed; a delay
   between two presses of the same action.
 
-[Unreleased]: https://github.com/LM1LC3N7/gladys-yunohost/commits/main
+[Unreleased]: https://github.com/LM1LC3N7/gladys-yunohost/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/LM1LC3N7/gladys-yunohost/releases/tag/v0.1.1

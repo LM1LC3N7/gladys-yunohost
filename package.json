@@ -1,6 +1,6 @@
 {
   "name": "gladys-yunohost",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Gladys Assistant external integration for YunoHost servers through the API of their web administration: upgrades waiting, services, diagnosis, backups; upgrade, backup and restart buttons off by default. Unofficial, not affiliated with the YunoHost project.",
   "type": "module",
